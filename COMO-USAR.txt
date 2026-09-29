@@ -1,0 +1,67 @@
+================================================
+  LOGIN PROTEGIDO - COMO USAR EM TODAS AS PÁGINAS
+================================================
+
+Arquivos:
+  - login.css     → estilos da tela de login
+  - login.js      → lógica do login + lista de usuários
+  - exemplo.html  → modelo pronto de página protegida
+
+------------------------------------------------
+PASSO A PASSO
+------------------------------------------------
+
+1. Coloque login.css e login.js na MESMA pasta
+   das suas páginas HTML (ou em uma pasta comum).
+
+2. Em CADA página HTML, faça estas 3 coisas:
+
+   a) No <head>, adicione:
+      <link rel="stylesheet" href="login.css" />
+
+   b) No início do <body>, cole o HTML do login:
+      (copie do exemplo.html a div #loginOverlay)
+
+   c) Envolva TODO o conteúdo da página assim:
+      <div id="mainApp" style="display:none;">
+        ... seu conteúdo aqui ...
+      </div>
+
+   d) No FINAL do <body>, antes de </body>:
+      <script src="login.js"></script>
+
+3. Edite as senhas em UM LUGAR SÓ:
+   Abra o arquivo login.js e altere o objeto USUARIOS.
+
+------------------------------------------------
+USUÁRIOS PADRÃO (mude!)
+------------------------------------------------
+  rai    → 1234
+  admin  → Admin@2026
+  joao   → joao2024
+
+------------------------------------------------
+BOTÃO SAIR (opcional)
+------------------------------------------------
+Dentro de #mainApp você pode colocar:
+  <button class="btn-sair" id="btnSair">Sair</button>
+
+O JavaScript já reconhece esse botão automaticamente.
+
+------------------------------------------------
+IMPORTANTE - SEGURANÇA
+------------------------------------------------
+- As senhas ficam no código JavaScript (visíveis).
+- Isso serve para dificultar acesso casual, NÃO é
+  segurança real para dados sensíveis.
+- O login vale para todas as páginas do mesmo
+  domínio enquanto o navegador estiver aberto
+  (sessionStorage).
+
+------------------------------------------------
+DICA
+------------------------------------------------
+Se as páginas estiverem em pastas diferentes,
+ajuste o caminho:
+  <link rel="stylesheet" href="../login.css" />
+  <script src="../login.js"></script>

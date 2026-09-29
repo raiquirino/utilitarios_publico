@@ -1,0 +1,115 @@
+/* ===== Login Protegido - CSS ===== */
+/* Cole este arquivo ou importe em todas as páginas */
+
+* {
+  box-sizing: border-box;
+}
+
+/* Tela de Login */
+#loginOverlay {
+  position: fixed;
+  inset: 0;
+  background: #0f1419;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.login-box {
+  background: #1a2332;
+  border: 1px solid #2d3a4f;
+  border-radius: 12px;
+  padding: 32px 28px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.login-box h2 {
+  margin: 0 0 8px 0;
+  font-size: 1.3rem;
+  color: #e7ecf3;
+  font-weight: 600;
+}
+
+.login-box .login-sub {
+  color: #8b9bb4;
+  font-size: 0.8rem;
+  margin-bottom: 20px;
+}
+
+.login-box input {
+  width: 100%;
+  padding: 11px 14px;
+  margin-bottom: 12px;
+  background: #0f1419;
+  border: 1px solid #2d3a4f;
+  border-radius: 6px;
+  color: #e7ecf3;
+  font-size: 0.95rem;
+  outline: none;
+  font-family: inherit;
+}
+
+.login-box input:focus {
+  border-color: #3b82f6;
+}
+
+.login-box input::placeholder {
+  color: #5a6a80;
+}
+
+.login-box button {
+  width: 100%;
+  padding: 11px;
+  margin-top: 6px;
+  background: #3b82f6;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.login-box button:hover {
+  background: #2563eb;
+}
+
+.login-box button:active {
+  background: #1d4ed8;
+}
+
+.login-error {
+  color: #ef4444;
+  font-size: 0.85rem;
+  margin-top: 12px;
+  display: none;
+}
+
+/* Botão Sair (opcional) */
+.btn-sair {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 100;
+  padding: 8px 16px;
+  background: #1a2332;
+  border: 1px solid #2d3a4f;
+  border-radius: 6px;
+  color: #8b9bb4;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.btn-sair:hover {
+  background: #2d3a4f;
+  color: #e7ecf3;
+}

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exemplo - Página Protegida</title>
+
+  <!-- 1. CSS do login (obrigatório) -->
+  <link rel="stylesheet" href="login.css" />
+
+  <!-- Seus estilos da página (opcional) -->
+  <style>
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0f1419;
+      color: #e7ecf3;
+      min-height: 100vh;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 12px;
+    }
+
+    p {
+      color: #8b9bb4;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========== TELA DE LOGIN (copie igual em todas as páginas) ========== -->
+  <div id="loginOverlay">
+    <div class="login-box">
+      <h2>Acesso Restrito</h2>
+      <div class="login-sub">Nome da sua página</div>
+      <input type="text" id="loginUser" placeholder="Usuário" autocomplete="off" autofocus>
+      <input type="password" id="loginPass" placeholder="Senha">
+      <button id="loginBtn">Entrar</button>
+      <div class="login-error" id="loginError">Usuário ou senha incorretos</div>
+    </div>
+  </div>
+
+  <!-- ========== CONTEÚDO DA PÁGINA ========== -->
+  <!-- Coloque TODO o conteúdo da sua página dentro desta div -->
+  <div id="mainApp" style="display:none;">
+
+    <!-- Botão Sair (opcional - pode remover se não quiser) -->
+    <button class="btn-sair" id="btnSair">Sair</button>
+
+    <div class="container">
+      <h1>Página protegida</h1>
+      <p>Se você está vendo isso, o login funcionou.</p>
+      <p>Substitua este conteúdo pelo que você quiser.</p>
+      <p>Usuários de teste: <strong>rai</strong> / 1234 &nbsp;|&nbsp; <strong>admin</strong> / Admin@2026</p>
+    </div>
+
+  </div>
+
+  <!-- 2. JavaScript do login (obrigatório - sempre no final) -->
+  <script src="login.js"></script>
+</body>
+</html>
