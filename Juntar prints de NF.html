@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Imagens para PDF</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #e5e7eb;
+      --bg: #f0f2f7;
+      --danger: #dc2626;
+      --sidebar: 300px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Barra superior */
+    .topbar {
+      flex-shrink: 0;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      box-shadow: 0 1px 3px #00000008;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-right: 8px;
+    }
+    .logo {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(145deg, var(--primary), #7c3aed);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      box-shadow: 0 4px 10px #4f46e540;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .brand span {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .divider {
+      width: 1px;
+      height: 28px;
+      background: var(--line);
+      margin: 0 4px;
+    }
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      flex: 1;
+    }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 13px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: .15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    button:hover { filter: brightness(.97); transform: translateY(-1px); }
+    button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+    .btn-primary { color: #fff; background: var(--primary); box-shadow: 0 4px 10px #4f46e533; }
+    .btn-secondary { color: #344054; background: #f2f4f7; }
+    .btn-danger { color: var(--danger); background: #fef2f2; }
+    input[type=file] { display: none; }
+
+    .status {
+      font-size: 12px;
+      color: var(--muted);
+      margin-left: auto;
+      max-width: 260px;
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .status.error { color: var(--danger); font-weight: 700; }
+
+    /* Corpo */
+    .main {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Preview grande */
+    .preview-panel {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background: #e8ebf2;
+      position: relative;
+    }
+    .preview-header {
+      flex-shrink: 0;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .preview-header span { color: var(--muted); font-weight: 500; }
+    .preview-scroll {
+      flex: 1;
+      overflow: auto;
+      padding: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-content: flex-start;
+      justify-content: center;
+    }
+    .preview-page {
+      background: #fff;
+      box-shadow: 0 4px 20px #10182818, 0 0 0 1px #d0d5dd;
+      border-radius: 2px;
+      width: min(440px, 100%);
+      aspect-ratio: 210 / 297;
+      display: flex;
+      flex-direction: column;
+      padding: 2.5%;
+      position: relative;
+    }
+    .preview-page.empty-preview {
+      display: grid;
+      place-items: center;
+      color: #98a2b3;
+      font-size: 14px;
+      text-align: center;
+      padding: 40px;
+    }
+    .preview-image {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .preview-image img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .preview-label {
+      flex-shrink: 0;
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* Lista de arquivos (esquerda) */
+    .sidebar {
+      width: var(--sidebar);
+      flex-shrink: 0;
+      background: #fff;
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .sidebar-header {
+      flex-shrink: 0;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .sidebar-header h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .sidebar-header small {
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .file-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .file-list:empty::after {
+      content: "Nenhuma imagem ainda.\A Arraste, cole ou use Adicionar.";
+      white-space: pre-line;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      padding: 40px 12px;
+      line-height: 1.5;
+    }
+    .file-item {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fafbfc;
+      cursor: grab;
+      transition: .15s;
+    }
+    .file-item:hover { border-color: #c7d2fe; background: #f8faff; }
+    .file-item.dragging { opacity: .4; }
+    .file-item:active { cursor: grabbing; }
+    .file-thumb {
+      width: 52px;
+      height: 52px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      overflow: hidden;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      position: relative;
+    }
+    .file-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .file-num {
+      position: absolute;
+      top: 2px; left: 2px;
+      background: #111827cc;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      display: grid;
+      place-items: center;
+      padding: 0 3px;
+    }
+    .file-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .file-name {
+      font-size: 12px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-size {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .file-remove {
+      width: 26px; height: 26px;
+      border-radius: 6px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 16px;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+    .file-remove:hover { background: #fef2f2; color: var(--danger); }
+
+    .drop-hint {
+      position: absolute;
+      inset: 0;
+      background: #4f46e522;
+      border: 3px dashed var(--primary);
+      display: none;
+      place-items: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary);
+      z-index: 20;
+      pointer-events: none;
+    }
+    .drop-hint.show { display: grid; }
+
+    @media (max-width: 720px) {
+      .main { flex-direction: column; }
+      .sidebar {
+        width: 100%;
+        max-height: 38vh;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        order: -1;
+      }
+      .preview-page { width: min(320px, 92vw); }
+      .status { display: none; }
+    }
+
+    /* ===== Impressão: apenas a página A4 (mesmo layout do PDF) ===== */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        overflow: hidden !important;
+        background: #fff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .topbar,
+      .sidebar,
+      .preview-header,
+      .drop-hint,
+      .status,
+      #fileInput,
+      button {
+        display: none !important;
+      }
+      .main {
+        display: block !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .preview-panel {
+        width: 210mm !important;
+        height: 297mm !important;
+        background: #fff !important;
+        position: relative !important;
+        overflow: hidden !important;
+      }
+      .preview-scroll {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        overflow: hidden !important;
+        display: block !important;
+      }
+      .preview-page {
+        width: 210mm !important;
+        height: 297mm !important;
+        max-width: none !important;
+        aspect-ratio: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        page-break-after: avoid;
+        page-break-inside: avoid;
+        position: relative !important;
+        background: #fff !important;
+      }
+      .preview-page.empty-preview {
+        display: none !important;
+      }
+      .preview-page > div {
+        inset: 5mm !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">▣</div>
+      <div>
+        <h1>Imagens para PDF</h1>
+        <span>Todas as imagens em 1 única página (máximo aproveitamento)</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="topbar-actions">
+      <button type="button" class="btn-secondary" id="addBtn">＋ Adicionar</button>
+      <button type="button" class="btn-danger" id="clearBtn">Limpar</button>
+
+      <div class="divider"></div>
+
+      <button type="button" class="btn-primary" id="makePdf">⬇ Baixar PDF</button>
+      <button type="button" class="btn-secondary" id="printBtn">🖨 Imprimir</button>
+
+      <div class="status" id="status">Arraste imagens ou use Adicionar</div>
+    </div>
+  </header>
+
+  <input id="fileInput" type="file" accept="image/*" multiple />
+
+  <div class="main">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Arquivos <small id="count">(0)</small></h2>
+      </div>
+      <div class="file-list" id="fileList" aria-live="polite"></div>
+    </aside>
+
+    <section class="preview-panel" id="previewPanel">
+      <div class="preview-header">
+        Pré-visualização do PDF
+        <span id="previewInfo">Nenhuma imagem</span>
+      </div>
+      <div class="preview-scroll" id="previewScroll">
+        <div class="preview-page empty-preview">
+          Adicione imagens para ver como o PDF ficará.<br>
+          <small style="margin-top:8px;display:block;color:#98a2b3">
+            Todas as imagens preenchem uma única página A4, aproveitando ao máximo as margens de 5 mm.
+          </small>
+        </div>
+      </div>
+      <div class="drop-hint" id="dropHint">Solte as imagens aqui</div>
+    </section>
+  </div>
+
+  <script>
+    const state = { images: [], draggedIndex: null };
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const countEl = document.getElementById('count');
+    const status = document.getElementById('status');
+    const previewScroll = document.getElementById('previewScroll');
+    const previewInfo = document.getElementById('previewInfo');
+    const dropHint = document.getElementById('dropHint');
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+    }
+
+    function addFiles(files) {
+      const accepted = [...files].filter(f => f.type.startsWith('image/'));
+      if (!accepted.length) {
+        status.textContent = 'Selecione imagens válidas.';
+        status.className = 'status error';
+        return;
+      }
+      accepted.forEach(file => {
+        const entry = { file, url: URL.createObjectURL(file), width: null, height: null };
+        state.images.push(entry);
+        const probe = new Image();
+        probe.onload = () => {
+          entry.width = probe.naturalWidth;
+          entry.height = probe.naturalHeight;
+          renderPreview();
+        };
+        probe.src = entry.url;
+      });
+      status.textContent = `${accepted.length} imagem(ns) adicionada(s)`;
+      status.className = 'status';
+      render();
+    }
+
+    function removeImage(index) {
+      URL.revokeObjectURL(state.images[index].url);
+      state.images.splice(index, 1);
+      render();
+    }
+
+    // Calcula o posicionamento das imagens em uma única página, em linhas
+    // "justificadas" que preenchem a largura útil e, por busca binária na
+    // altura de cada linha, também a altura útil disponível — maximizando
+    // o aproveitamento da área dentro das margens.
+    function justifiedLayout(aspects, containerWidth, containerHeight, gap) {
+      function buildRows(targetHeight) {
+        const rows = [];
+        let current = [];
+        let aspectSum = 0;
+        aspects.forEach((aspect, idx) => {
+          current.push(idx);
+          aspectSum += aspect;
+          const rowWidth = aspectSum * targetHeight + gap * (current.length - 1);
+          if (rowWidth >= containerWidth) {
+            const avail = containerWidth - gap * (current.length - 1);
+            rows.push({ indices: current, height: avail / aspectSum });
+            current = [];
+            aspectSum = 0;
+          }
+        });
+        if (current.length) {
+          const avail = containerWidth - gap * (current.length - 1);
+          rows.push({ indices: current, height: avail / aspectSum });
+        }
+        const totalHeight = rows.reduce((sum, r) => sum + r.height, 0) + gap * Math.max(0, rows.length - 1);
+        return { rows, totalHeight };
+      }
+
+      let lo = 0.5, hi = Math.max(containerHeight, 10);
+      while (buildRows(hi).totalHeight < containerHeight && hi < containerHeight * 30) hi *= 2;
+      let best = buildRows(hi);
+      for (let i = 0; i < 40; i++) {
+        const mid = (lo + hi) / 2;
+        const result = buildRows(mid);
+        if (result.totalHeight > containerHeight) hi = mid; else lo = mid;
+        best = result;
+      }
+      if (best.totalHeight > containerHeight) {
+        const scale = containerHeight / best.totalHeight;
+        best.rows = best.rows.map(r => ({ ...r, height: r.height * scale }));
+        best.totalHeight = containerHeight;
+      }
+
+      const placements = [];
+      let y = 0;
+      best.rows.forEach(row => {
+        const widths = row.indices.map(idx => aspects[idx] * row.height);
+        const rowWidth = widths.reduce((s, w) => s + w, 0) + gap * (row.indices.length - 1);
+        let x = Math.max(0, (containerWidth - rowWidth) / 2);
+        row.indices.forEach((idx, i) => {
+          placements.push({ index: idx, x, y, width: widths[i], height: row.height });
+          x += widths[i] + gap;
+        });
+        y += row.height + gap;
+      });
+      return { placements, totalHeight: best.totalHeight };
+    }
+
+    // Dimensões virtuais equivalentes à área útil da A4 (mesmas usadas no PDF final)
+    const PAGE_W = 200, PAGE_H = 287, PAGE_GAP = 3;
+
+    function renderPreview() {
+      previewScroll.innerHTML = '';
+      if (!state.images.length) {
+        previewScroll.innerHTML = `<div class="preview-page empty-preview">
+          Adicione imagens para ver como o PDF ficará.<br>
+          <small style="margin-top:8px;display:block;color:#98a2b3">
+            Todas as imagens preenchem uma única página A4, aproveitando ao máximo as margens de 5 mm.
+          </small>
+        </div>`;
+        previewInfo.textContent = 'Nenhuma imagem';
+        return;
+      }
+      previewInfo.textContent = `${state.images.length} imagem(ns) · 1 página`;
+
+      const aspects = state.images.map(img => (img.width && img.height) ? img.width / img.height : 1);
+      const { placements } = justifiedLayout(aspects, PAGE_W, PAGE_H, PAGE_GAP);
+
+      const page = document.createElement('div');
+      page.className = 'preview-page';
+      page.style.display = 'block';
+      page.style.position = 'relative';
+      page.style.padding = '0';
+      const box = document.createElement('div');
+      box.style.position = 'absolute';
+      box.style.inset = '2.5%';
+      placements.forEach(p => {
+        const item = document.createElement('div');
+        item.style.position = 'absolute';
+        item.style.left = (p.x / PAGE_W * 100) + '%';
+        item.style.top = (p.y / PAGE_H * 100) + '%';
+        item.style.width = (p.width / PAGE_W * 100) + '%';
+        item.style.height = (p.height / PAGE_H * 100) + '%';
+        const el = document.createElement('img');
+        el.src = state.images[p.index].url;
+        el.alt = state.images[p.index].file.name;
+        el.style.width = '100%';
+        el.style.height = '100%';
+        el.style.objectFit = 'contain';
+        el.style.display = 'block';
+        item.appendChild(el);
+        box.appendChild(item);
+      });
+      page.appendChild(box);
+      previewScroll.appendChild(page);
+    }
+
+    function render() {
+      countEl.textContent = `(${state.images.length})`;
+      fileList.innerHTML = '';
+      state.images.forEach((image, index) => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.draggable = true;
+        item.dataset.index = index;
+        item.innerHTML = `
+          <div class="file-thumb">
+            <img src="${image.url}" alt="">
+            <span class="file-num">${index + 1}</span>
+          </div>
+          <div class="file-info">
+            <div class="file-name" title="${escapeHtml(image.file.name)}">${escapeHtml(image.file.name)}</div>
+            <div class="file-size">${formatSize(image.file.size)}</div>
+          </div>
+          <button class="file-remove" title="Remover" aria-label="Remover">×</button>
+        `;
+        item.querySelector('.file-remove').addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeImage(index);
+        });
+        item.addEventListener('dragstart', () => {
+          state.draggedIndex = index;
+          item.classList.add('dragging');
+        });
+        item.addEventListener('dragend', () => {
+          state.draggedIndex = null;
+          item.classList.remove('dragging');
+        });
+        item.addEventListener('dragover', e => e.preventDefault());
+        item.addEventListener('drop', e => {
+          e.preventDefault();
+          const from = state.draggedIndex;
+          if (from === null || from === index) return;
+          const [moved] = state.images.splice(from, 1);
+          state.images.splice(index, 0, moved);
+          render();
+        });
+        fileList.appendChild(item);
+      });
+      renderPreview();
+    }
+
+    document.getElementById('addBtn').addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', e => {
+      addFiles(e.target.files);
+      fileInput.value = '';
+    });
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      state.images.forEach(i => URL.revokeObjectURL(i.url));
+      state.images = [];
+      status.textContent = 'Lista limpa';
+      status.className = 'status';
+      render();
+    });
+
+    // Drag & drop
+    let dragCounter = 0;
+    ['dragenter', 'dragover'].forEach(ev => {
+      document.addEventListener(ev, e => {
+        e.preventDefault();
+        if (e.dataTransfer.types.includes('Files')) {
+          dragCounter++;
+          dropHint.classList.add('show');
+        }
+      });
+    });
+    document.addEventListener('dragleave', e => {
+      e.preventDefault();
+      dragCounter = Math.max(0, dragCounter - 1);
+      if (dragCounter === 0) dropHint.classList.remove('show');
+    });
+    document.addEventListener('drop', e => {
+      e.preventDefault();
+      dragCounter = 0;
+      dropHint.classList.remove('show');
+      if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+    });
+
+    // Colar
+    document.addEventListener('paste', e => {
+      const items = [...(e.clipboardData?.items || [])]
+        .filter(i => i.type.startsWith('image/'))
+        .map(i => i.getAsFile())
+        .filter(Boolean);
+      if (items.length) {
+        e.preventDefault();
+        addFiles(items);
+      }
+    });
+
+    // ===== PDF: sempre 1 imagem por página, tamanho máximo =====
+    async function loadImage(image) {
+      return new Promise((resolve, reject) => {
+        const element = new Image();
+        const reader = new FileReader();
+        let loaded = false, read = false;
+        const finish = () => { if (loaded && read) resolve({ element, dataUrl: reader.result }); };
+        element.onload = () => { loaded = true; finish(); };
+        element.onerror = reject;
+        reader.onload = () => { read = true; finish(); };
+        reader.onerror = reject;
+        element.src = image.url;
+        reader.readAsDataURL(image.file);
+      });
+    }
+
+    // Remove bordas brancas grandes para aproveitar melhor a área útil
+    async function trimWhiteBorders(dataUrl, originalType) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            ctx.drawImage(img, 0, 0);
+            const { data: d, width: w, height: h } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const threshold = 248;
+            let minX = w, minY = h, maxX = 0, maxY = 0, found = false;
+            for (let y = 0; y < h; y++) {
+              for (let x = 0; x < w; x++) {
+                const i = (y * w + x) * 4;
+                if (d[i + 3] > 20 && (d[i] < threshold || d[i + 1] < threshold || d[i + 2] < threshold)) {
+                  found = true;
+                  if (x < minX) minX = x;
+                  if (x > maxX) maxX = x;
+                  if (y < minY) minY = y;
+                  if (y > maxY) maxY = y;
+                }
+              }
+            }
+            if (!found) { resolve(null); return; }
+            const pad = Math.max(2, Math.round(Math.min(w, h) * 0.008));
+            minX = Math.max(0, minX - pad);
+            minY = Math.max(0, minY - pad);
+            maxX = Math.min(w - 1, maxX + pad);
+            maxY = Math.min(h - 1, maxY + pad);
+            const cropW = maxX - minX + 1;
+            const cropH = maxY - minY + 1;
+            if (cropW > w * 0.96 && cropH > h * 0.96) { resolve(null); return; }
+            const crop = document.createElement('canvas');
+            crop.width = cropW;
+            crop.height = cropH;
+            crop.getContext('2d').drawImage(canvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+            const isPng = originalType === 'image/png';
+            resolve({
+              dataUrl: isPng ? crop.toDataURL('image/png') : crop.toDataURL('image/jpeg', 0.92),
+              width: cropW,
+              height: cropH
+            });
+          } catch {
+            resolve(null);
+          }
+        };
+        img.onerror = () => resolve(null);
+        img.src = dataUrl;
+      });
+    }
+
+    function addImageToPage(pdf, image, x, y, width, height) {
+      const format = (image.file.type === 'image/png' || (image.dataUrl && image.dataUrl.startsWith('data:image/png'))) ? 'PNG' : 'JPEG';
+      try {
+        pdf.addImage(image.dataUrl, format, x, y, width, height, undefined, 'NONE');
+      } catch {
+        try {
+          pdf.addImage(image.element, format, x, y, width, height, undefined, 'NONE');
+        } catch {
+          pdf.addImage(image.element, format, x, y, width, height, undefined, 'FAST');
+        }
+      }
+    }
+
+    async function createPdf(images) {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
+      const pageW = 210, pageH = 297, margin = 5, gap = 3;
+      const usableW = pageW - margin * 2;
+      const usableH = pageH - margin * 2;
+
+      const aspects = images.map(image => {
+        const natW = image.trimWidth || image.element.naturalWidth;
+        const natH = image.trimHeight || image.element.naturalHeight;
+        return natW / natH;
+      });
+      const { placements } = justifiedLayout(aspects, usableW, usableH, gap);
+
+      placements.forEach((p, i) => {
+        const image = images[p.index];
+        addImageToPage(pdf, image, margin + p.x, margin + p.y, p.width, p.height);
+        status.textContent = `Montando o PDF (${i + 1} de ${images.length})...`;
+      });
+      return pdf;
+    }
+
+    document.getElementById('makePdf').addEventListener('click', async () => {
+      if (!state.images.length) {
+        status.textContent = 'Adicione pelo menos uma imagem.';
+        status.className = 'status error';
+        return;
+      }
+      const button = document.getElementById('makePdf');
+      button.disabled = true;
+      button.textContent = '⏳ Gerando...';
+      status.textContent = 'Preparando...';
+      try {
+        const images = [];
+        for (const image of state.images) {
+          const loaded = await loadImage(image);
+          status.textContent = 'Otimizando imagem...';
+          const trimmed = await trimWhiteBorders(loaded.dataUrl, image.file.type);
+          if (trimmed) {
+            images.push({
+              ...image,
+              ...loaded,
+              dataUrl: trimmed.dataUrl,
+              trimWidth: trimmed.width,
+              trimHeight: trimmed.height
+            });
+          } else {
+            images.push({ ...image, ...loaded });
+          }
+        }
+        const pdf = await createPdf(images);
+        pdf.save('imagens-juntas.pdf');
+        status.textContent = 'PDF baixado com sucesso!';
+        status.className = 'status';
+      } catch (err) {
+        console.error(err);
+        status.textContent = 'Erro ao gerar o PDF.';
+        status.className = 'status error';
+      } finally {
+        button.disabled = false;
+        button.textContent = '⬇ Baixar PDF';
+      }
+    });
+
+    document.getElementById('printBtn').addEventListener('click', () => {
+      if (!state.images.length) {
+        status.textContent = 'Adicione pelo menos uma imagem para imprimir.';
+        status.className = 'status error';
+        return;
+      }
+      window.print();
+    });
+
+    render();
+  </script>
+</body>
+</html>

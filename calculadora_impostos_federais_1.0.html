@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Calculadora de Impostos</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    max-width: 760px;
+    margin: 15px auto;
+    font-size: 13px;
+}
+
+h2 {
+    margin: 0 0 8px;
+}
+
+label {
+    font-weight: bold;
+    font-size: 12px;
+}
+
+input {
+    padding: 4px;
+    font-size: 12px;
+}
+
+.topo {
+    margin-bottom: 6px;
+}
+
+.impostos {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px 10px;
+}
+
+.imposto {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.imposto span {
+    min-width: 55px;
+}
+
+.imposto input {
+    width: 60px;
+}
+
+button {
+    margin-top: 8px;
+    padding: 6px;
+    width: 100%;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.resultado {
+    margin-top: 8px;
+    padding: 8px;
+    background: #f2f2f2;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 8px;
+}
+.resultado strong {
+    grid-column: span 2;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Calculadora de Impostos</h2>
+
+<div class="topo">
+    <label>Valor Bruto (R$)</label>
+    <input type="text" id="base" placeholder="0,00">
+</div>
+
+<div class="impostos">
+    <div class="imposto">
+        <input type="checkbox" id="chkPis" checked>
+        <span>PIS</span>
+        <input type="text" id="pis" value="0,65">
+    </div>
+
+    <div class="imposto">
+        <input type="checkbox" id="chkCofins" checked>
+        <span>COFINS</span>
+        <input type="text" id="cofins" value="3">
+    </div>
+
+    <div class="imposto">
+        <input type="checkbox" id="chkCsll" checked>
+        <span>CSLL</span>
+        <input type="text" id="csll" value="1">
+    </div>
+
+    <div class="imposto">
+        <input type="checkbox" id="chkIr" checked>
+        <span>IR</span>
+        <input type="text" id="ir" value="1,5">
+    </div>
+
+    <div class="imposto">
+        <input type="checkbox" id="chkIss" checked>
+        <span>ISS</span>
+        <input type="text" id="iss" value="5">
+    </div>
+
+    <div class="imposto">
+        <input type="checkbox" id="chkInss" checked>
+        <span>INSS</span>
+        <input type="text" id="inss" value="11">
+    </div>
+</div>
+
+<button onclick="calcular()">Calcular</button>
+
+<div class="resultado" id="resultado"></div>
+
+<script>
+// "1.234,56" → 1234.56
+function brToNumber(valor) {
+    if (!valor) return 0;
+    return parseFloat(
+        valor.replace(/\./g, "").replace(",", ".")
+    ) || 0;
+}
+
+// 1234.56 → "R$ 1.234,56"
+function formatBR(valor) {
+    return new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(valor);
+}
+
+function calcular() {
+    const base = brToNumber(document.getElementById("base").value);
+    let total = 0;
+    let html = "";
+
+    function imposto(chk, campo, nome) {
+        if (document.getElementById(chk).checked) {
+            const aliquota = brToNumber(document.getElementById(campo).value);
+            const valor = base * (aliquota / 100);
+            total += valor;
+            html += `<div>${nome}</div><div>${formatBR(valor)}</div>`;
+        }
+    }
+
+    imposto("chkPis", "pis", "PIS");
+    imposto("chkCofins", "cofins", "COFINS");
+    imposto("chkCsll", "csll", "CSLL");
+    imposto("chkIr", "ir", "IR");
+    imposto("chkIss", "iss", "ISS");
+    imposto("chkInss", "inss", "INSS");
+
+    const liquido = base - total;
+
+    html += `<strong>Total Impostos</strong><strong>${formatBR(total)}</strong>`;
+    html += `<strong>Valor Líquido</strong><strong>${formatBR(liquido)}</strong>`;
+
+    document.getElementById("resultado").innerHTML = html;
+}
+</script>
+
+</body>
+</html>

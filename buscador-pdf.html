@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Search Pro</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .wrap { max-width: 1280px; margin: 0 auto; }
+
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 4px;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .sub { text-align: center; color: #64748b; font-size: 0.82rem; margin-bottom: 16px; }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+
+    /* Controles em linha compacta */
+    .top-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    input[type="file"] {
+      background: #334155; color: #e2e8f0; padding: 8px;
+      border-radius: 7px; border: 1px solid #475569; font-size: 0.85rem; cursor: pointer;
+    }
+    input[type="text"] {
+      flex: 1; min-width: 180px;
+      padding: 9px 12px; border-radius: 7px;
+      border: 1px solid #475569; background: #0f172a; color: #e2e8f0; font-size: 0.9rem;
+    }
+    input[type="text"]:focus, input[type="number"]:focus {
+      outline: none; border-color: #38bdf8;
+    }
+    input[type="number"] {
+      width: 64px; padding: 7px 8px; border-radius: 7px;
+      border: 1px solid #475569; background: #0f172a; color: #e2e8f0; font-size: 0.85rem;
+    }
+    button {
+      padding: 9px 16px; border: none; border-radius: 7px;
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      color: #fff; font-weight: 600; cursor: pointer; font-size: 0.88rem;
+    }
+    button:hover { opacity: 0.92; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.sec {
+      background: #334155; color: #cbd5e1;
+    }
+    button.ok {
+      background: linear-gradient(135deg, #059669, #10b981);
+    }
+
+    /* Opções em linha */
+    .opts-row {
+      display: flex; flex-wrap: wrap; gap: 6px 12px;
+      align-items: center; font-size: 0.8rem; color: #94a3b8;
+    }
+    .opts-row label {
+      display: inline-flex; align-items: center; gap: 4px;
+      cursor: pointer; white-space: nowrap;
+    }
+    .opts-row input[type="checkbox"] { accent-color: #38bdf8; }
+    .opts-row .sep { color: #475569; }
+
+    .status {
+      margin-top: 8px; padding: 7px 10px; border-radius: 6px;
+      background: #0f172a; font-size: 0.82rem; color: #94a3b8;
+    }
+    .status.ok { color: #4ade80; }
+    .status.err { color: #f87171; }
+
+    .progress {
+      height: 4px; background: #0f172a; border-radius: 3px;
+      margin-top: 8px; overflow: hidden; display: none;
+    }
+    .progress > div {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #0ea5e9, #818cf8);
+      transition: width 0.2s;
+    }
+
+    .stats {
+      display: flex; gap: 16px; flex-wrap: wrap;
+      margin-top: 8px; font-size: 0.8rem; color: #64748b;
+    }
+    .stats b { color: #e2e8f0; }
+
+    /* Toolbar resultados */
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .tabs { display: flex; gap: 4px; }
+    .tabs button {
+      background: #0f172a; border: 1px solid #334155;
+      color: #94a3b8; padding: 6px 12px; font-size: 0.82rem;
+    }
+    .tabs button.on {
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      color: #fff; border-color: transparent;
+    }
+    .toolbar-r { display: flex; gap: 6px; }
+
+    .sum {
+      display: none; flex-wrap: wrap; gap: 14px;
+      background: #0f172a; border-radius: 7px;
+      padding: 8px 12px; margin-bottom: 10px;
+      font-size: 0.82rem; color: #94a3b8;
+    }
+    .sum b { color: #38bdf8; }
+    .sum .neg { color: #f87171; font-weight: 600; }
+    .sum .pos { color: #4ade80; font-weight: 600; }
+
+    /* Tabela compacta */
+    .tbl-wrap {
+      overflow: auto;
+      max-height: calc(100vh - 320px);
+      border: 1px solid #334155;
+      border-radius: 8px;
+    }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 0.84rem;
+    }
+    thead {
+      background: #0f172a; position: sticky; top: 0; z-index: 2;
+    }
+    th {
+      padding: 8px 10px; text-align: left; color: #38bdf8;
+      font-weight: 600; border-bottom: 2px solid #334155;
+      white-space: nowrap; font-size: 0.78rem;
+    }
+    td {
+      padding: 7px 10px; border-bottom: 1px solid #1a2332;
+      vertical-align: top; cursor: pointer; line-height: 1.35;
+    }
+    td:hover { background: #243044; }
+    td.copied { background: #064e3b !important; }
+    tbody tr { background: #1e293b; }
+    tbody tr:nth-child(even) { background: #162032; }
+
+    .c-page { width: 48px; font-weight: 700; color: #38bdf8; }
+    .c-data { width: 82px; color: #a5b4fc; white-space: nowrap; }
+    .c-doc  { width: 90px; color: #94a3b8; }
+    .c-val  { width: 90px; text-align: right; font-weight: 600; white-space: nowrap; }
+    .neg { color: #f87171; }
+    .pos { color: #4ade80; }
+    .c-hist { min-width: 200px; }
+    .c-snip { min-width: 280px; }
+
+    mark {
+      background: #fbbf24; color: #000;
+      padding: 0 2px; border-radius: 2px; font-weight: 600;
+    }
+
+    .empty {
+      text-align: center; padding: 40px 16px; color: #64748b; font-size: 0.9rem;
+    }
+    .hint {
+      margin-top: 8px; text-align: center;
+      font-size: 0.75rem; color: #475569;
+    }
+
+    /* Preview compacto */
+    .preview {
+      display: none; margin-top: 12px;
+      background: #0f172a; border: 1px solid #334155;
+      border-radius: 8px; padding: 10px;
+    }
+    .preview h3 { font-size: 0.85rem; color: #38bdf8; margin-bottom: 8px; }
+    #previewCanvas {
+      max-width: 100%; border-radius: 4px; border: 1px solid #334155; background: #fff;
+    }
+    .preview-nav { display: flex; gap: 6px; margin-top: 8px; }
+
+    #toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #059669; color: #fff;
+      padding: 10px 22px; border-radius: 7px;
+      font-weight: 600; font-size: 0.9rem;
+      z-index: 100; transition: transform 0.25s;
+      pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    .history {
+      display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;
+    }
+    .history button {
+      background: #0f172a; border: 1px solid #334155;
+      color: #94a3b8; padding: 3px 8px; font-size: 0.75rem;
+      border-radius: 4px; max-width: 140px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .history button:hover { border-color: #38bdf8; color: #38bdf8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>📄 PDF Search Pro</h1>
+    <p class="sub">Busca avançada · Tabela / Texto · Regex · Fuzzy · OCR · Export CSV</p>
+
+    <!-- CONTROLES -->
+    <div class="card">
+      <div class="top-row">
+        <input type="file" id="fileInput" accept="application/pdf">
+        <input type="text" id="searchInput" placeholder="Buscar... (várias palavras, regex...)" autocomplete="off">
+        <button id="searchBtn" disabled>Buscar</button>
+        <button class="ok" id="exportBtn" disabled>CSV</button>
+        <button class="sec" id="copyAllBtn" disabled>Copiar tudo</button>
+      </div>
+
+      <div class="opts-row">
+        <label><input type="checkbox" id="optCase"> Maiúsc/minúsc</label>
+        <label><input type="checkbox" id="optWord"> Palavra inteira</label>
+        <label><input type="checkbox" id="optRegex"> Regex</label>
+        <label><input type="checkbox" id="optFuzzy"> Fuzzy</label>
+        <label><input type="checkbox" id="optAnd" checked> AND (todas)</label>
+        <label><input type="checkbox" id="optOCR"> OCR</label>
+        <span class="sep">|</span>
+        <label>Pág <input type="number" id="pageFrom" min="1" placeholder="De"></label>
+        <label>até <input type="number" id="pageTo" min="1" placeholder="Até"></label>
+      </div>
+
+      <div class="progress" id="progress"><div id="progressBar"></div></div>
+      <div class="status" id="status">Selecione um PDF</div>
+      <div class="stats" id="stats" style="display:none;">
+        <span>Páginas: <b id="statPages">0</b></span>
+        <span>Resultados: <b id="statResults">0</b></span>
+        <span>Arquivo: <b id="statFile">—</b></span>
+      </div>
+      <div class="history" id="history"></div>
+    </div>
+
+    <!-- RESULTADOS -->
+    <div class="card">
+      <div class="toolbar">
+        <div class="tabs">
+          <button id="modeTable" class="on">📊 Tabela</button>
+          <button id="modeText">📝 Texto</button>
+        </div>
+        <div class="toolbar-r">
+          <button class="sec" id="btnHelp" style="padding:6px 10px;font-size:0.8rem;">❓</button>
+          <button class="sec" id="btnClear" style="padding:6px 10px;font-size:0.8rem;">Limpar</button>
+        </div>
+      </div>
+
+      <div class="sum" id="sumBar">
+        <span>Linhas: <b id="sumCount">0</b></span>
+        <span>Σ Realizado: <span id="sumR" class="neg">0,00</span></span>
+        <span>Σ Previsto: <span id="sumP">0,00</span></span>
+      </div>
+
+      <div id="results">
+        <div class="empty">Carregue um PDF e faça uma busca.</div>
+      </div>
+      <p class="hint" id="hint" style="display:none;">Dois cliques na célula = copiar · Clique na página = preview</p>
+
+      <div class="preview" id="preview">
+        <h3>Preview — Página <span id="prevNum">1</span></h3>
+        <canvas id="previewCanvas"></canvas>
+        <div class="preview-nav">
+          <button class="sec" id="prevBtn" style="padding:5px 10px;font-size:0.8rem;">← Ant</button>
+          <button class="sec" id="nextBtn" style="padding:5px 10px;font-size:0.8rem;">Próx →</button>
+          <button class="sec" id="closePrev" style="padding:5px 10px;font-size:0.8rem;">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast">✓ Copiado!</div>
+
+  <script type="module">
+    import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+
+    let pdfDoc = null, pageData = [], lastResults = [], currentMode = 'table', curPrev = 1;
+    let history = JSON.parse(localStorage.getItem('psp_hist') || '[]');
+
+    const $ = id => document.getElementById(id);
+    const fileInput = $('fileInput'), searchInput = $('searchInput');
+    const searchBtn = $('searchBtn'), exportBtn = $('exportBtn'), copyAllBtn = $('copyAllBtn');
+    const statusEl = $('status'), resultsEl = $('results');
+    const progress = $('progress'), progressBar = $('progressBar');
+    const hintEl = $('hint'), toastEl = $('toast'), sumBar = $('sumBar');
+    const preview = $('preview'), previewCanvas = $('previewCanvas');
+
+    renderHist();
+    try {
+      const o = JSON.parse(localStorage.getItem('psp_opts') || '{}');
+      if (o.case) $('optCase').checked = true;
+      if (o.word) $('optWord').checked = true;
+      if (o.regex) $('optRegex').checked = true;
+      if (o.fuzzy) $('optFuzzy').checked = true;
+      if (o.and === false) $('optAnd').checked = false;
+      if (o.ocr) $('optOCR').checked = true;
+    } catch {}
+
+    // Load
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) loadPDF(e.target.files[0]); });
+
+    async function loadPDF(file) {
+      statusEl.textContent = 'Carregando...'; statusEl.className = 'status';
+      searchBtn.disabled = true; exportBtn.disabled = true; copyAllBtn.disabled = true;
+      resultsEl.innerHTML = '<div class="empty">Extraindo texto...</div>';
+      hintEl.style.display = 'none'; sumBar.style.display = 'none'; preview.style.display = 'none';
+      pageData = []; progress.style.display = 'block'; progressBar.style.width = '0%';
+
+      try {
+        const buf = await file.arrayBuffer();
+        pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+        const n = pdfDoc.numPages;
+        const ocr = $('optOCR').checked;
+
+        for (let i = 1; i <= n; i++) {
+          statusEl.textContent = `Página ${i}/${n}` + (ocr ? ' (OCR)' : '');
+          progressBar.style.width = (i/n*100) + '%';
+          const page = await pdfDoc.getPage(i);
+          let lines = [], full = '';
+          if (ocr) {
+            full = await doOCR(page, i);
+            lines = [{ text: full }];
+          } else {
+            const c = await page.getTextContent();
+            lines = buildLines(c.items);
+            full = lines.map(l => l.text).join('\n');
+          }
+          pageData.push({ page: i, lines, full });
+        }
+
+        statusEl.textContent = `Pronto · ${n} páginas`;
+        statusEl.className = 'status ok';
+        searchBtn.disabled = false;
+        $('statPages').textContent = n;
+        $('statResults').textContent = '0';
+        $('statFile').textContent = file.name.length > 30 ? file.name.slice(0,28)+'…' : file.name;
+        $('stats').style.display = 'flex';
+        resultsEl.innerHTML = '<div class="empty">Digite o termo e busque.</div>';
+        progress.style.display = 'none';
+        searchInput.focus();
+      } catch (err) {
+        statusEl.textContent = 'Erro: ' + err.message;
+        statusEl.className = 'status err';
+        progress.style.display = 'none';
+      }
+    }
+
+    function buildLines(items) {
+      if (!items?.length) return [];
+      const pts = items.filter(i => i.str?.trim()).map(i => {
+        const t = i.transform || [1,0,0,1,0,0];
+        return { text: i.str, x: t[4], y: Math.round(t[5]*10)/10, w: i.width||0 };
+      });
+      pts.sort((a,b) => b.y - a.y || a.x - b.x);
+      const lines = [], TOL = 3;
+      pts.forEach(p => {
+        let L = lines.find(l => Math.abs(l.y - p.y) <= TOL);
+        if (!L) { L = { y: p.y, items: [] }; lines.push(L); }
+        L.items.push(p);
+      });
+      lines.forEach(L => {
+        L.items.sort((a,b) => a.x - b.x);
+        let t = '', last = null;
+        L.items.forEach(it => {
+          if (last !== null && it.x - last > 2) t += ' ';
+          t += it.text; last = it.x + (it.w || it.text.length*4);
+        });
+        L.text = t.replace(/\s+/g,' ').trim();
+      });
+      return lines.filter(l => l.text);
+    }
+
+    async function doOCR(page, num) {
+      if (!window.Tesseract) {
+        statusEl.textContent = 'Carregando OCR...';
+        await new Promise((res,rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+          s.onload = res; s.onerror = rej; document.head.appendChild(s);
+        });
+      }
+      const vp = page.getViewport({ scale: 1.4 });
+      const c = document.createElement('canvas');
+      c.width = vp.width; c.height = vp.height;
+      await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+      const r = await Tesseract.recognize(c, 'por', {
+        logger: m => { if (m.status==='recognizing text') statusEl.textContent = `OCR ${num}: ${Math.round(m.progress*100)}%`; }
+      });
+      return r.data.text || '';
+    }
+
+    // Search
+    function doSearch() {
+      const term = searchInput.value.trim();
+      if (!term || !pageData.length) return;
+      saveOpts(); addHist(term);
+
+      const opts = {
+        case: $('optCase').checked, word: $('optWord').checked,
+        regex: $('optRegex').checked, fuzzy: $('optFuzzy').checked,
+        and: $('optAnd').checked,
+        from: parseInt($('pageFrom').value)||1, to: parseInt($('pageTo').value)||99999
+      };
+      const pages = pageData.filter(p => p.page >= opts.from && p.page <= opts.to);
+      let res = [];
+      if (opts.fuzzy) res = fuzzyS(pages, term, opts.case);
+      else if (opts.regex) res = regexS(pages, term, opts.case);
+      else res = normalS(pages, term, opts);
+
+      lastResults = res;
+      $('statResults').textContent = res.length;
+      exportBtn.disabled = !res.length;
+      copyAllBtn.disabled = !res.length;
+      render(res, term);
+      updateSum(res);
+    }
+
+    function normalS(pages, term, o) {
+      const terms = term.split(/\s+/).filter(Boolean);
+      const f = o.case ? 'g' : 'gi';
+      const out = [];
+      pages.forEach(({page, lines}) => {
+        lines.forEach(line => {
+          const ck = t => {
+            const re = o.word
+              ? new RegExp(`(?:^|\\s|\\p{P})${escR(t)}(?:$|\\s|\\p{P})`, f+'u')
+              : new RegExp(escR(t), f);
+            return re.test(line.text);
+          };
+          if (o.and ? terms.every(ck) : terms.some(ck)) out.push({ page, line: line.text });
+        });
+      });
+      return out;
+    }
+    function regexS(pages, pat, cs) {
+      let re; try { re = new RegExp(pat, cs?'g':'gi'); } catch(e) {
+        statusEl.textContent = 'Regex inválida'; statusEl.className = 'status err'; return [];
+      }
+      const out = [];
+      pages.forEach(({page, lines}) => {
+        lines.forEach(l => { if (re.test(l.text)) out.push({page, line:l.text}); re.lastIndex=0; });
+      });
+      return out;
+    }
+    function fuzzyS(pages, term, cs) {
+      const list = [];
+      pages.forEach(({page, lines}) => lines.forEach(l => list.push({page, line:l.text})));
+      return new Fuse(list, { keys:['line'], threshold:0.4, ignoreLocation:true, isCaseSensitive:cs })
+        .search(term).map(r => ({ page: r.item.page, line: r.item.line }));
+    }
+
+    // Render
+    function render(res, term) {
+      if (!res.length) {
+        resultsEl.innerHTML = `<div class="empty">Nenhum resultado para "<b>${escH(term)}</b>"</div>`;
+        hintEl.style.display = 'none'; return;
+      }
+      currentMode === 'table' ? renderTable(res, term) : renderText(res, term);
+      hintEl.style.display = 'block';
+    }
+
+    function renderTable(res, term) {
+      const rows = res.map(r => ({...parse(r.line), page:r.page}));
+      let h = `<div class="tbl-wrap"><table><thead><tr>
+        <th class="c-page">Pág</th><th class="c-data">Data</th><th class="c-doc">Doc</th>
+        <th class="c-hist">Histórico</th><th class="c-val">Realizado</th><th class="c-val">Previsto</th>
+      </tr></thead><tbody>`;
+      rows.forEach(r => {
+        h += `<tr>
+          <td class="c-page" data-c="${esc(r.page)}" data-p="${r.page}">${r.page}</td>
+          <td class="c-data" data-c="${esc(r.data)}">${r.data||'—'}</td>
+          <td class="c-doc" data-c="${esc(r.doc)}">${hl(r.doc,term)}</td>
+          <td class="c-hist" data-c="${esc(r.hist)}">${hl(r.hist,term)}</td>
+          <td class="c-val" data-c="${esc(r.real)}">${fv(r.real)}</td>
+          <td class="c-val" data-c="${esc(r.prev)}">${fv(r.prev)}</td>
+        </tr>`;
+      });
+      h += `</tbody></table></div>`;
+      resultsEl.innerHTML = h; bind();
+    }
+
+    function renderText(res, term) {
+      let h = `<div class="tbl-wrap"><table><thead><tr>
+        <th class="c-page">Pág</th><th class="c-snip">Trecho</th>
+      </tr></thead><tbody>`;
+      res.forEach(r => {
+        h += `<tr>
+          <td class="c-page" data-c="${esc(r.page)}" data-p="${r.page}">${r.page}</td>
+          <td class="c-snip" data-c="${esc(r.line)}">${hl(r.line,term)}</td>
+        </tr>`;
+      });
+      h += `</tbody></table></div>`;
+      resultsEl.innerHTML = h; bind();
+    }
+
+    function parse(line) {
+      const m = line.match(/(\d{2}\/\d{2}\/\d{4})/);
+      const data = m ? m[1] : '';
+      let rest = data ? line.replace(data,'').trim() : line;
+      let doc = '';
+      const dm = rest.match(/^([A-Za-z0-9\/\.\-]{1,20})\s+/);
+      if (dm) { doc = dm[1]; rest = rest.slice(dm[0].length).trim(); }
+      const vr = /(-?\d{1,3}(?:\.\d{3})*,\d{2})/g;
+      const vs = [...rest.matchAll(vr)].map(x => x[1]);
+      let real='', prev='';
+      if (vs.length) {
+        real = vs[0]; if (vs.length>1) prev = vs[1];
+        vs.forEach(v => rest = rest.replace(v,''));
+        rest = rest.replace(/[\s\-–—]+$/g,'').trim();
+      }
+      return { data, doc: doc||'—', hist: rest||line, real, prev };
+    }
+
+    function updateSum(res) {
+      if (currentMode !== 'table' || !res.length) { sumBar.style.display='none'; return; }
+      let tR=0, tP=0;
+      res.forEach(r => { const p=parse(r.line); tR+=pBR(p.real); tP+=pBR(p.prev); });
+      $('sumCount').textContent = res.length;
+      $('sumR').textContent = fBR(tR);
+      $('sumR').className = tR<0 ? 'neg' : 'pos';
+      $('sumP').textContent = fBR(tP);
+      sumBar.style.display = 'flex';
+    }
+    function pBR(s){ if(!s) return 0; return parseFloat(s.replace(/\./g,'').replace(',','.'))||0; }
+    function fBR(n){ return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+    function bind() {
+      resultsEl.querySelectorAll('td[data-c]').forEach(td => {
+        td.addEventListener('dblclick', () => copy(td.getAttribute('data-c')||td.innerText.trim(), td));
+        if (td.dataset.p) {
+          td.title = 'Preview da página';
+          td.addEventListener('click', () => showPrev(+td.dataset.p));
+        }
+      });
+    }
+
+    function copy(t, el) {
+      navigator.clipboard.writeText(t).then(() => {
+        el.classList.add('copied'); setTimeout(()=>el.classList.remove('copied'),500);
+        toast('✓ Copiado!');
+      }).catch(() => {
+        const ta=document.createElement('textarea'); ta.value=t;
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+        el.classList.add('copied'); setTimeout(()=>el.classList.remove('copied'),500);
+        toast('✓ Copiado!');
+      });
+    }
+    function toast(m){ toastEl.textContent=m; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'),1400); }
+
+    // Preview
+    async function showPrev(n) {
+      if (!pdfDoc) return;
+      curPrev = n; $('prevNum').textContent = n; preview.style.display = 'block';
+      const page = await pdfDoc.getPage(n);
+      const vp = page.getViewport({ scale: 1.15 });
+      previewCanvas.width = vp.width; previewCanvas.height = vp.height;
+      await page.render({ canvasContext: previewCanvas.getContext('2d'), viewport: vp }).promise;
+    }
+    $('prevBtn').onclick = () => { if (curPrev>1) showPrev(curPrev-1); };
+    $('nextBtn').onclick = () => { if (pdfDoc && curPrev < pdfDoc.numPages) showPrev(curPrev+1); };
+    $('closePrev').onclick = () => { preview.style.display = 'none'; };
+
+    // Export / Copy all
+    exportBtn.onclick = () => {
+      if (!lastResults.length) return;
+      let csv = currentMode==='table'
+        ? 'Pagina;Data;Documento;Historico;Realizado;Previsto\n'
+        : 'Pagina;Trecho\n';
+      lastResults.forEach(r => {
+        if (currentMode==='table') {
+          const p = parse(r.line);
+          csv += `${r.page};${p.data};"${p.doc.replace(/"/g,'""')}";"${p.hist.replace(/"/g,'""')}";${p.real};${p.prev}\n`;
+        } else csv += `${r.page};"${r.line.replace(/"/g,'""')}"\n`;
+      });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+      a.download = `busca-${Date.now()}.csv`; a.click();
+      toast('✓ CSV baixado');
+    };
+
+    copyAllBtn.onclick = () => {
+      if (!lastResults.length) return;
+      let t = '';
+      if (currentMode==='table') {
+        t = 'Pág\tData\tDoc\tHistórico\tRealizado\tPrevisto\n';
+        lastResults.forEach(r => {
+          const p=parse(r.line);
+          t += `${r.page}\t${p.data}\t${p.doc}\t${p.hist}\t${p.real}\t${p.prev}\n`;
+        });
+      } else lastResults.forEach(r => { t += `[${r.page}] ${r.line}\n`; });
+      navigator.clipboard.writeText(t).then(() => toast('✓ Tudo copiado'));
+    };
+
+    // Mode
+    $('modeTable').onclick = () => {
+      currentMode='table'; $('modeTable').classList.add('on'); $('modeText').classList.remove('on');
+      if (lastResults.length){ render(lastResults, searchInput.value.trim()); updateSum(lastResults); }
+    };
+    $('modeText').onclick = () => {
+      currentMode='text'; $('modeText').classList.add('on'); $('modeTable').classList.remove('on');
+      sumBar.style.display='none';
+      if (lastResults.length) render(lastResults, searchInput.value.trim());
+    };
+
+    // History
+    function addHist(t) {
+      history = [t, ...history.filter(x=>x!==t)].slice(0,10);
+      localStorage.setItem('psp_hist', JSON.stringify(history));
+      renderHist();
+    }
+    function renderHist() {
+      $('history').innerHTML = history.map(t =>
+        `<button title="${escH(t)}">${escH(t.length>18?t.slice(0,16)+'…':t)}</button>`
+      ).join('');
+      $('history').querySelectorAll('button').forEach((b,i) => {
+        b.onclick = () => { searchInput.value = history[i]; doSearch(); };
+      });
+    }
+
+    function saveOpts() {
+      localStorage.setItem('psp_opts', JSON.stringify({
+        case:$('optCase').checked, word:$('optWord').checked,
+        regex:$('optRegex').checked, fuzzy:$('optFuzzy').checked,
+        and:$('optAnd').checked, ocr:$('optOCR').checked
+      }));
+    }
+
+    $('btnClear').onclick = () => {
+      pageData=[]; lastResults=[]; pdfDoc=null; fileInput.value='';
+      searchBtn.disabled=true; exportBtn.disabled=true; copyAllBtn.disabled=true;
+      $('stats').style.display='none'; sumBar.style.display='none'; preview.style.display='none';
+      resultsEl.innerHTML='<div class="empty">Carregue um PDF.</div>';
+      statusEl.textContent='Selecione um PDF'; statusEl.className='status';
+      hintEl.style.display='none';
+    };
+
+    $('btnHelp').onclick = () => alert(
+      'ATALHOS\nEnter = Buscar\nEsc = Fechar preview\n\n'+
+      'Dois cliques na célula = copiar só ela\nClique na página = preview\n\n'+
+      'AND = todas as palavras na linha\nRegex = expressão regular\nFuzzy = busca aproximada\nOCR = PDF escaneado'
+    );
+
+    searchBtn.onclick = doSearch;
+    searchInput.addEventListener('keydown', e => { if (e.key==='Enter') doSearch(); });
+    document.addEventListener('keydown', e => { if (e.key==='Escape') preview.style.display='none'; });
+
+    function escR(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+    function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function hl(text, term) {
+      if (!text) return '';
+      let out = escH(text);
+      const f = $('optCase').checked ? 'g' : 'gi';
+      term.split(/\s+/).filter(Boolean).forEach(w => {
+        try { out = out.replace(new RegExp(`(${escR(w)})`, f), '<mark>$1</mark>'); } catch{}
+      });
+      return out;
+    }
+    function fv(v){ if(!v) return ''; return `<span class="${v.startsWith('-')?'neg':'pos'}">${v}</span>`; }
+  </script>
+</body>
+</html>

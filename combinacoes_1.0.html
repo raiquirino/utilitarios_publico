@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solver de Soma de Subconjunto (Excel)</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a2332;
+      --border: #2d3a4f;
+      --text: #e7ecf3;
+      --muted: #8b9bb4;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --row-alt: #151d2a;
+      --highlight: #1e3a5f;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.4;
+    }
+
+    .container {
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 8px 8px 16px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    header h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .toolbar {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: center;
+    }
+
+    .toolbar .group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      align-items: center;
+    }
+
+    .toolbar label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .field-inline {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    input[type="password"],
+    select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 6px 8px;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="file"] {
+      padding: 4px;
+      max-width: 180px;
+      font-size: 0.75rem;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    #targetInput { width: 120px; }
+    #maxResults { width: 56px; }
+
+    select {
+      min-width: 140px;
+      max-width: 220px;
+      cursor: pointer;
+    }
+
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    button:hover:not(:disabled) { background: var(--accent-hover); }
+    button:active:not(:disabled) { transform: scale(0.98); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    button.secondary:hover:not(:disabled) {
+      background: var(--border);
+    }
+
+    button.btn-download {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 5px;
+    }
+
+    button.btn-download:hover:not(:disabled) {
+      background: var(--border);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .paste-zone {
+      flex: 1;
+      min-width: 140px;
+      max-width: 220px;
+      border: 1.5px dashed var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      text-align: center;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 0.8rem;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+      user-select: none;
+      background: transparent;
+    }
+
+    .paste-zone:hover,
+    .paste-zone:focus {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(59, 130, 246, 0.06);
+      outline: none;
+    }
+
+    .paste-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--accent);
+    }
+
+    .paste-zone.has-data {
+      border-style: solid;
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .status {
+      font-size: 0.78rem;
+      color: var(--muted);
+      width: 100%;
+      margin-top: 2px;
+    }
+
+    .status.error { color: var(--danger); }
+    .status.ok { color: var(--success); }
+
+    .progress {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      width: 100%;
+      display: none;
+      margin-top: 4px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.2s;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+    }
+
+    .card-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .card-header-row h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 999px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: calc(100vh - 200px);
+      border-radius: 4px;
+      border: 1px solid #b4b4b4;
+      background: #ffffff;
+    }
+
+    table {
+      width: max-content;
+      max-width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+      table-layout: auto;
+      background: #ffffff;
+      color: #000000;
+    }
+
+    th, td {
+      padding: 2px 8px;
+      text-align: left;
+      border: 1px solid #d0d0d0;
+      white-space: nowrap;
+      vertical-align: middle;
+      width: 1%;
+      height: 20px;
+    }
+
+    th {
+      background: #f2f2f2;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      font-weight: 600;
+      color: #000000;
+      text-transform: none;
+      font-size: 0.8rem;
+      letter-spacing: 0;
+      border-color: #b4b4b4;
+    }
+
+    tr:nth-child(even) { background: #ffffff; }
+    tr:nth-child(odd) { background: #ffffff; }
+    tr.selected-row { background: #c6efce !important; }
+    tr.selected-row td { border-color: #a9d08e; }
+    tr:hover { background: #e8f0fe; }
+
+    td.num {
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+    }
+
+    td.col-selected {
+      background: #e2efda;
+    }
+
+    tr.selected-row td.col-selected {
+      background: #c6efce;
+    }
+
+    td.cell-selected,
+    th.cell-selected {
+      background: #5b9bd5 !important;
+      color: #ffffff !important;
+      outline: 2px solid #2b579a;
+      outline-offset: -2px;
+    }
+
+    tr.selected-row td.cell-selected {
+      background: #2e75b6 !important;
+      color: #ffffff !important;
+    }
+
+    td.cell-selecting,
+    th.cell-selecting {
+      background: #9dc3e6 !important;
+      outline: 1px dashed #2b579a;
+      outline-offset: -1px;
+    }
+
+    .table-wrap, .result-table-wrap {
+      user-select: none;
+    }
+
+    .results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .result-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .result-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .result-card-header h3 {
+      font-size: 0.9rem;
+      margin: 0;
+      color: var(--success);
+    }
+
+    .result-card .sum-line {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .result-table-wrap {
+      overflow-x: auto;
+      border-radius: 4px;
+      border: 1px solid #b4b4b4;
+      background: #ffffff;
+    }
+
+    .result-table {
+      width: max-content;
+      max-width: 100%;
+      font-size: 0.8rem;
+      font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+      border-collapse: collapse;
+      table-layout: auto;
+      background: #ffffff;
+      color: #000000;
+    }
+
+    .result-table th,
+    .result-table td {
+      padding: 2px 8px;
+      text-align: left;
+      border: 1px solid #d0d0d0;
+      white-space: nowrap;
+      vertical-align: middle;
+      width: 1%;
+      height: 20px;
+    }
+
+    .result-table th {
+      background: #f2f2f2;
+      font-weight: 600;
+      color: #000000;
+      text-transform: none;
+      font-size: 0.8rem;
+      letter-spacing: 0;
+      border-color: #b4b4b4;
+    }
+
+    .result-table tr:nth-child(even),
+    .result-table tr:nth-child(odd) { background: #ffffff; }
+
+    .result-table td.num {
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 20px 12px;
+      font-size: 0.9rem;
+    }
+
+    .sep {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 700px) {
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .sep { display: none; }
+      #targetInput, select, .paste-zone { max-width: 100%; width: 100%; }
+      input[type="file"] { max-width: 100%; }
+    }
+
+    /* ===== Tela de Login ===== */
+    #loginOverlay {
+      position: fixed;
+      inset: 0;
+      background: #0f1419;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .login-box {
+      background: #1a2332;
+      border: 1px solid #2d3a4f;
+      border-radius: 12px;
+      padding: 32px 28px;
+      width: 100%;
+      max-width: 340px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    .login-box h2 {
+      margin-bottom: 8px;
+      font-size: 1.3rem;
+      color: #e7ecf3;
+    }
+
+    .login-box .login-sub {
+      color: #8b9bb4;
+      font-size: 0.8rem;
+      margin-bottom: 20px;
+    }
+
+    .login-box input {
+      width: 100%;
+      padding: 11px 14px;
+      margin-bottom: 12px;
+      background: #0f1419;
+      border: 1px solid #2d3a4f;
+      border-radius: 6px;
+      color: #e7ecf3;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .login-box input:focus {
+      border-color: #3b82f6;
+    }
+
+    .login-box button {
+      width: 100%;
+      padding: 11px;
+      margin-top: 6px;
+      background: #3b82f6;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .login-box button:hover {
+      background: #2563eb;
+    }
+
+    .login-error {
+      color: #ef4444;
+      font-size: 0.85rem;
+      margin-top: 12px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Tela de Login -->
+  <div id="loginOverlay">
+    <div class="login-box">
+      <h2>Acesso Restrito</h2>
+      <div class="login-sub">Solver de Soma de Subconjunto</div>
+      <input type="text" id="loginUser" placeholder="Usuário" autocomplete="off" autofocus>
+      <input type="password" id="loginPass" placeholder="Senha">
+      <button id="loginBtn">Entrar</button>
+      <div class="login-error" id="loginError">Usuário ou senha incorretos</div>
+    </div>
+  </div>
+
+  <div class="container" id="mainApp" style="display:none;">
+    <header>
+      <h1>Solver de Soma de Subconjunto</h1>
+      <p>Carregue, cole ou escolha a coluna e o valor-alvo. Clique no cabeçalho para selecionar a coluna. Ctrl+clique ou arraste para selecionar células e ver a soma.</p>
+    </header>
+
+    <div class="toolbar">
+      <div class="group">
+        <div class="field-inline">
+          <label>Arquivo</label>
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" />
+        </div>
+        <div class="field-inline" id="sheetField" style="display:none">
+          <label>Aba</label>
+          <select id="sheetSelect"></select>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="paste-zone" id="pasteZone" tabindex="0" title="Clique e cole (Ctrl+V) ou arraste um arquivo .xlsx/.csv">
+        Cole aqui (Ctrl+V)
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="group">
+        <div class="field-inline">
+          <label>Coluna</label>
+          <select id="columnSelect" disabled>
+            <option value="">Dados</option>
+          </select>
+        </div>
+        <div class="field-inline">
+          <label>Alvo</label>
+          <input type="text" id="targetInput" inputmode="decimal" placeholder="ex: 1.300,00" disabled />
+        </div>
+        <div class="field-inline">
+          <label>Máx.</label>
+          <input type="text" id="maxResults" inputmode="numeric" value="1" />
+        </div>
+        <button id="solveBtn" disabled>Resolver</button>
+      </div>
+
+      <div class="status" id="loadStatus"></div>
+      <div class="progress" id="progress"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="status" id="solveStatus"></div>
+      <div class="status" id="selectionStatus" style="display:none; color:#4ade80; font-weight:600;"></div>
+    </div>
+
+    <div class="card" id="tableCard" style="display:none">
+      <div class="card-header-row">
+        <h2>Dados <span class="badge" id="rowCount">0</span></h2>
+        <button type="button" class="btn-download" id="downloadMainBtn">Baixar Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table id="dataTable">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="resultsCard" style="display:none">
+      <div class="card-header-row">
+        <h2>Combinações <span class="badge" id="resultCount">0</span></h2>
+      </div>
+      <div class="results-list" id="resultsList"></div>
+    </div>
+  </div>
+
+  <script>
+    // ========== LOGIN (vários usuários) ==========
+    // Para adicionar ou remover usuários, edite apenas este objeto:
+    const USUARIOS = {
+      'rai': '1234',
+      'nanda': '1234',
+      'mariana': '1234',
+      'izaque': '1234'
+      // adicione mais assim:
+      // 'nome': 'senha',
+    };
+
+    const loginOverlay = document.getElementById('loginOverlay');
+    const loginUser = document.getElementById('loginUser');
+    const loginPass = document.getElementById('loginPass');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginError = document.getElementById('loginError');
+    const mainApp = document.getElementById('mainApp');
+
+    if (sessionStorage.getItem('logado') === 'true') {
+      loginOverlay.style.display = 'none';
+      mainApp.style.display = 'block';
+    }
+
+    function tentarLogin() {
+      const user = loginUser.value.trim();
+      const pass = loginPass.value;
+
+      if (USUARIOS[user] && USUARIOS[user] === pass) {
+        sessionStorage.setItem('logado', 'true');
+        loginOverlay.style.display = 'none';
+        mainApp.style.display = 'block';
+        loginError.style.display = 'none';
+      } else {
+        loginError.style.display = 'block';
+        loginPass.value = '';
+        loginPass.focus();
+      }
+    }
+
+    loginBtn.addEventListener('click', tentarLogin);
+    loginPass.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') tentarLogin();
+    });
+    loginUser.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') loginPass.focus();
+    });
+
+    // ========== Estado ==========
+    let workbook = null;
+    let sheetData = [];
+    let headers = [];
+    let selectedIndices = new Set();
+
+    const fileInput = document.getElementById('fileInput');
+    const sheetSelect = document.getElementById('sheetSelect');
+    const sheetField = document.getElementById('sheetField');
+    const columnSelect = document.getElementById('columnSelect');
+    const targetInput = document.getElementById('targetInput');
+    const maxResults = document.getElementById('maxResults');
+    const solveBtn = document.getElementById('solveBtn');
+    const loadStatus = document.getElementById('loadStatus');
+    const solveStatus = document.getElementById('solveStatus');
+    const tableCard = document.getElementById('tableCard');
+    const dataTable = document.getElementById('dataTable');
+    const resultsCard = document.getElementById('resultsCard');
+    const resultsList = document.getElementById('resultsList');
+    const rowCount = document.getElementById('rowCount');
+    const resultCount = document.getElementById('resultCount');
+    const progress = document.getElementById('progress');
+    const progressBar = document.getElementById('progressBar');
+    const pasteZone = document.getElementById('pasteZone');
+
+    function parseNumber(val) {
+      if (val == null || val === '') return null;
+      if (typeof val === 'number' && !isNaN(val)) return val;
+      let s = String(val).trim();
+      if (!s) return null;
+      s = s.replace(/[R$\s]/g, '');
+      if (/^-?\d{1,3}(\.\d{3})*(,\d+)?$/.test(s) || /^-?\d+,\d+$/.test(s)) {
+        s = s.replace(/\./g, '').replace(',', '.');
+      } else {
+        s = s.replace(/,/g, '');
+      }
+      const n = parseFloat(s);
+      return isNaN(n) ? null : n;
+    }
+
+    function formatBR(n) {
+      const rounded = Math.round((n + Number.EPSILON) * 1e10) / 1e10;
+      if (Number.isInteger(rounded)) {
+        return rounded.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+      }
+      return rounded.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 10 });
+    }
+
+    function formatDateBR(d) {
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const year = d.getUTCFullYear();
+      return day + '/' + month + '/' + year;
+    }
+
+    function displayCell(val) {
+      if (val == null || val === '') return '';
+      if (val instanceof Date && !isNaN(val.getTime())) return formatDateBR(val);
+      if (typeof val === 'number' && val > 20000 && val < 80000 && Number.isInteger(val)) {
+        const d = new Date(Date.UTC(1899, 11, 30 + val));
+        return formatDateBR(d);
+      }
+      const s = String(val).trim();
+      const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+      if (m) {
+        let a = parseInt(m[1], 10);
+        let b = parseInt(m[2], 10);
+        let y = m[3];
+        if (y.length === 2) y = (parseInt(y, 10) > 50 ? '19' : '20') + y;
+        let day, month;
+        if (b > 12 && a <= 12) { month = a; day = b; }
+        else if (a > 12 && b <= 12) { day = a; month = b; }
+        else { day = a; month = b; }
+        return String(day).padStart(2, '0') + '/' + String(month).padStart(2, '0') + '/' + y;
+      }
+      const n = parseNumber(val);
+      if (n === null) return s;
+      if (/^-?\d{1,3}(\.\d{3})*,\d+$/.test(s) || /^-?\d+,\d+$/.test(s)) return s;
+      return formatBR(n);
+    }
+
+    function colLetter(idx) {
+      let s = '';
+      let n = idx;
+      do {
+        s = String.fromCharCode(65 + (n % 26)) + s;
+        n = Math.floor(n / 26) - 1;
+      } while (n >= 0);
+      return s;
+    }
+
+    function downloadExcel(rowIndices, filename) {
+      if (!headers.length || !sheetData.length) return;
+      const rows = (rowIndices == null) ? sheetData : rowIndices.map(i => sheetData[i]).filter(Boolean);
+      if (!rows.length) return;
+      const aoa = [headers.slice()];
+      rows.forEach(row => {
+        aoa.push(headers.map(h => {
+          const v = row[h];
+          const n = parseNumber(v);
+          return n !== null ? n : (v ?? '');
+        }));
+      });
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Dados');
+      XLSX.writeFile(wb, filename || 'export.xlsx');
+    }
+
+    function parsePastedText(text) {
+      text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+      if (!text) return null;
+      const lines = text.split('\n').filter(l => l.trim() !== '');
+      if (!lines.length) return null;
+      const first = lines[0];
+      let delim = '\t';
+      if (!first.includes('\t')) {
+        const semi = (first.match(/;/g) || []).length;
+        const comma = (first.match(/,/g) || []).length;
+        delim = semi > comma ? ';' : ',';
+      }
+      function splitLine(line) {
+        if (delim === '\t') return line.split('\t');
+        const cells = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+            else inQuotes = !inQuotes;
+          } else if (ch === delim && !inQuotes) {
+            cells.push(cur);
+            cur = '';
+          } else {
+            cur += ch;
+          }
+        }
+        cells.push(cur);
+        return cells;
+      }
+      const rows = lines.map(splitLine);
+      const maxCols = Math.max(...rows.map(r => r.length));
+      if (maxCols === 0) return null;
+      rows.forEach(r => { while (r.length < maxCols) r.push(''); });
+      const firstRow = rows[0];
+      let numericCount = 0;
+      firstRow.forEach(c => { if (parseNumber(c) !== null) numericCount++; });
+      const looksLikeHeader = numericCount < firstRow.length * 0.5;
+      let hdrs, dataRows;
+      if (looksLikeHeader && rows.length > 1) {
+        hdrs = firstRow.map((h, i) => {
+          const t = String(h).trim();
+          return t || ('Coluna ' + colLetter(i));
+        });
+        dataRows = rows.slice(1);
+      } else {
+        hdrs = Array.from({ length: maxCols }, (_, i) => 'Coluna ' + colLetter(i));
+        dataRows = rows;
+      }
+      const seen = {};
+      hdrs = hdrs.map(h => {
+        let name = h;
+        if (seen[name] != null) {
+          seen[name]++;
+          name = name + ' (' + seen[name] + ')';
+        } else {
+          seen[name] = 0;
+        }
+        return name;
+      });
+      const json = dataRows.map(r => {
+        const obj = {};
+        hdrs.forEach((h, i) => { obj[h] = r[i] != null ? String(r[i]).trim() : ''; });
+        return obj;
+      });
+      return { headers: hdrs, data: json };
+    }
+
+    function applyLoadedData(hdrs, data, sourceLabel) {
+      headers = hdrs;
+      sheetData = data;
+      workbook = null;
+      sheetField.style.display = 'none';
+      if (!sheetData.length) {
+        columnSelect.innerHTML = '<option value="">— sem dados —</option>';
+        columnSelect.disabled = true;
+        targetInput.disabled = true;
+        solveBtn.disabled = true;
+        pasteZone.classList.remove('has-data');
+        pasteZone.textContent = 'Cole aqui (Ctrl+V)';
+        loadStatus.textContent = 'Nenhuma linha de dados encontrada.';
+        loadStatus.className = 'status error';
+        renderTable();
+        return;
+      }
+      columnSelect.innerHTML = '';
+      let firstNumeric = null;
+      headers.forEach((h, idx) => {
+        const sample = sheetData.slice(0, 30).map(r => parseNumber(r[h])).filter(n => n !== null);
+        const isNumeric = sample.length >= Math.min(3, sheetData.length * 0.3);
+        const opt = document.createElement('option');
+        opt.value = h;
+        opt.textContent = colLetter(idx) + ' — ' + h + (isNumeric ? ' (núm.)' : '');
+        if (isNumeric && firstNumeric === null) firstNumeric = h;
+        columnSelect.appendChild(opt);
+      });
+      if (firstNumeric) columnSelect.value = firstNumeric;
+      columnSelect.disabled = false;
+      targetInput.disabled = false;
+      solveBtn.disabled = false;
+      pasteZone.classList.add('has-data');
+      pasteZone.textContent = sheetData.length + ' linhas';
+      renderTable();
+      resultsCard.style.display = 'none';
+      selectedIndices.clear();
+      if (typeof clearCellSelection === 'function') clearCellSelection();
+      loadStatus.textContent = sourceLabel + ': ' + sheetData.length + ' linha(s), ' + headers.length + ' coluna(s)';
+      loadStatus.className = 'status ok';
+    }
+
+    function handlePasteText(text) {
+      const parsed = parsePastedText(text);
+      if (!parsed) {
+        loadStatus.textContent = 'Nada para processar. Cole células do Excel (Ctrl+C → Ctrl+V).';
+        loadStatus.className = 'status error';
+        return;
+      }
+      applyLoadedData(parsed.headers, parsed.data, 'Colado');
+    }
+
+    pasteZone.addEventListener('click', () => pasteZone.focus());
+    pasteZone.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = e.clipboardData && e.clipboardData.getData('text/plain');
+      if (text) handlePasteText(text);
+    });
+
+    document.addEventListener('paste', (e) => {
+      if (document.activeElement === pasteZone) return;
+      const tag = document.activeElement && document.activeElement.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      const text = e.clipboardData && e.clipboardData.getData('text/plain');
+      if (!text || !text.trim()) return;
+      if (!text.includes('\t') && text.split(/\r?\n/).filter(l => l.trim()).length < 2) return;
+      e.preventDefault();
+      handlePasteText(text);
+    });
+
+    pasteZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      pasteZone.classList.add('drag-over');
+    });
+    pasteZone.addEventListener('dragleave', () => pasteZone.classList.remove('drag-over'));
+    pasteZone.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      pasteZone.classList.remove('drag-over');
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        const name = (file.name || '').toLowerCase();
+        if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv')) {
+          await loadFile(file);
+          return;
+        }
+      }
+      const text = e.dataTransfer && e.dataTransfer.getData('text/plain');
+      if (text) handlePasteText(text);
+    });
+
+    async function loadFile(file) {
+      loadStatus.textContent = 'Lendo arquivo...';
+      loadStatus.className = 'status';
+      try {
+        const buffer = await file.arrayBuffer();
+        workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+        sheetSelect.innerHTML = '';
+        workbook.SheetNames.forEach((name, i) => {
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          if (i === 0) opt.selected = true;
+          sheetSelect.appendChild(opt);
+        });
+        sheetField.style.display = workbook.SheetNames.length > 1 ? 'flex' : 'none';
+        loadSheet(workbook.SheetNames[0]);
+        loadStatus.textContent = file.name + ' (' + workbook.SheetNames.length + ' aba(s))';
+        loadStatus.className = 'status ok';
+        pasteZone.classList.add('has-data');
+        pasteZone.textContent = sheetData.length + ' linhas';
+      } catch (err) {
+        console.error(err);
+        loadStatus.textContent = 'Erro ao ler o arquivo: ' + err.message;
+        loadStatus.className = 'status error';
+      }
+    }
+
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (file) await loadFile(file);
+    });
+
+    sheetSelect.addEventListener('change', () => {
+      if (workbook) loadSheet(sheetSelect.value);
+    });
+
+    function loadSheet(sheetName) {
+      const sheet = workbook.Sheets[sheetName];
+      const json = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false, dateNF: 'dd/mm/yyyy' });
+      if (!json.length) {
+        sheetData = [];
+        headers = [];
+        renderTable();
+        columnSelect.innerHTML = '<option value="">— vazia —</option>';
+        columnSelect.disabled = true;
+        targetInput.disabled = true;
+        solveBtn.disabled = true;
+        loadStatus.textContent = 'Aba vazia.';
+        loadStatus.className = 'status error';
+        return;
+      }
+      headers = Object.keys(json[0]);
+      sheetData = json;
+      columnSelect.innerHTML = '';
+      let firstNumeric = null;
+      headers.forEach((h, idx) => {
+        const sample = sheetData.slice(0, 30).map(r => parseNumber(r[h])).filter(n => n !== null);
+        const isNumeric = sample.length >= Math.min(3, sheetData.length * 0.3);
+        const opt = document.createElement('option');
+        opt.value = h;
+        opt.textContent = colLetter(idx) + ' — ' + h + (isNumeric ? ' (núm.)' : '');
+        if (isNumeric && firstNumeric === null) firstNumeric = h;
+        columnSelect.appendChild(opt);
+      });
+      if (firstNumeric) columnSelect.value = firstNumeric;
+      columnSelect.disabled = false;
+      targetInput.disabled = false;
+      solveBtn.disabled = false;
+      renderTable();
+      resultsCard.style.display = 'none';
+      selectedIndices.clear();
+      if (typeof clearCellSelection === 'function') clearCellSelection();
+    }
+
+    function renderTable() {
+      if (!sheetData.length) {
+        tableCard.style.display = 'none';
+        return;
+      }
+      tableCard.style.display = 'block';
+      rowCount.textContent = sheetData.length;
+      const thead = dataTable.querySelector('thead');
+      const tbody = dataTable.querySelector('tbody');
+      thead.innerHTML = '';
+      tbody.innerHTML = '';
+      const selectedCol = columnSelect.value;
+      const hr = document.createElement('tr');
+      headers.forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        th.title = 'Clique para selecionar a coluna';
+        th.style.cursor = 'pointer';
+        if (h === selectedCol) {
+          th.style.color = '#217346';
+          th.style.background = '#e2efda';
+        }
+        th.addEventListener('click', () => {
+          if (columnSelect.value !== h) {
+            columnSelect.value = h;
+            columnSelect.dispatchEvent(new Event('change'));
+          }
+        });
+        hr.appendChild(th);
+      });
+      thead.appendChild(hr);
+      sheetData.forEach((row, i) => {
+        const tr = document.createElement('tr');
+        tr.dataset.index = i;
+        if (selectedIndices.has(i)) tr.classList.add('selected-row');
+        headers.forEach(h => {
+          const td = document.createElement('td');
+          td.textContent = displayCell(row[h]);
+          if (h === selectedCol) {
+            td.classList.add('col-selected');
+            if (parseNumber(row[h]) !== null) td.classList.add('num');
+          }
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    columnSelect.addEventListener('change', () => {
+      selectedIndices.clear();
+      if (typeof clearCellSelection === 'function') clearCellSelection();
+      renderTable();
+      resultsCard.style.display = 'none';
+    });
+
+    function findSubsets(values, target, maxFound) {
+      const n = values.length;
+      if (n === 0) return [];
+      const targetCents = Math.round(target * 100);
+      const items = values.map(v => ({ index: v.index, cents: Math.round(v.value * 100) }));
+      const mid = Math.floor(n / 2);
+      const left = items.slice(0, mid);
+      const right = items.slice(mid);
+      function allSubsets(arr) {
+        const map = new Map();
+        const m = arr.length;
+        const total = 1 << m;
+        for (let mask = 0; mask < total; mask++) {
+          let sum = 0;
+          const idxs = [];
+          for (let b = 0; b < m; b++) {
+            if (mask & (1 << b)) {
+              sum += arr[b].cents;
+              idxs.push(arr[b].index);
+            }
+          }
+          if (!map.has(sum)) map.set(sum, []);
+          map.get(sum).push(idxs);
+        }
+        return map;
+      }
+      const leftMap = allSubsets(left);
+      const rightMap = allSubsets(right);
+      const results = [];
+      const seen = new Set();
+      const collectCap = Math.min(Math.max(maxFound * 40, 80), 400);
+      outer:
+      for (const [sumL, combosL] of leftMap) {
+        const need = targetCents - sumL;
+        if (!rightMap.has(need)) continue;
+        const combosR = rightMap.get(need);
+        for (const cL of combosL) {
+          for (const cR of combosR) {
+            const allIdx = [...cL, ...cR].sort((a, b) => a - b);
+            const key = allIdx.join(',');
+            if (seen.has(key)) continue;
+            seen.add(key);
+            results.push(allIdx);
+            if (results.length >= collectCap) break outer;
+          }
+        }
+      }
+      results.sort((a, b) => {
+        const len = Math.min(a.length, b.length);
+        for (let i = 0; i < len; i++) {
+          if (a[i] !== b[i]) return a[i] - b[i];
+        }
+        return a.length - b.length;
+      });
+      return results.slice(0, maxFound);
+    }
+
+    function buildResultTableHtml(idxs, col) {
+      let html = '<div class="result-table-wrap"><table class="result-table"><thead>';
+      html += '<tr>';
+      headers.forEach(h => { html += '<th>' + h + '</th>'; });
+      html += '</tr></thead><tbody>';
+      idxs.forEach(i => {
+        const row = sheetData[i];
+        html += '<tr>';
+        headers.forEach(h => {
+          const shown = displayCell(row[h]);
+          if (h === col && parseNumber(row[h]) !== null) {
+            html += '<td class="num">' + shown + '</td>';
+          } else {
+            html += '<td>' + shown + '</td>';
+          }
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      return html;
+    }
+
+    solveBtn.addEventListener('click', () => {
+      const col = columnSelect.value;
+      const target = parseNumber(targetInput.value);
+      if (!col) {
+        solveStatus.textContent = 'Selecione a coluna numérica.';
+        solveStatus.className = 'status error';
+        return;
+      }
+      if (target === null || target <= 0) {
+        solveStatus.textContent = 'Informe um valor-alvo válido (> 0).';
+        solveStatus.className = 'status error';
+        return;
+      }
+      const values = [];
+      sheetData.forEach((row, i) => {
+        const n = parseNumber(row[col]);
+        if (n !== null && n > 0) values.push({ index: i, value: n });
+      });
+      if (values.length === 0) {
+        solveStatus.textContent = 'Nenhum número válido na coluna.';
+        solveStatus.className = 'status error';
+        return;
+      }
+      if (values.length > 40) {
+        solveStatus.textContent = values.length + ' números — pode demorar (máx. ~36 recomendado).';
+        solveStatus.className = 'status';
+      } else {
+        solveStatus.textContent = 'Buscando entre ' + values.length + ' números...';
+        solveStatus.className = 'status';
+      }
+      progress.style.display = 'block';
+      progressBar.style.width = '30%';
+      solveBtn.disabled = true;
+      setTimeout(() => {
+        try {
+          progressBar.style.width = '60%';
+          const max = parseInt(maxResults.value, 10) || 1;
+          const subsets = findSubsets(values, target, max);
+          progressBar.style.width = '100%';
+          selectedIndices.clear();
+          if (typeof clearCellSelection === 'function') clearCellSelection();
+          resultsList.innerHTML = '';
+          if (subsets.length === 0) {
+            resultsCard.style.display = 'block';
+            resultCount.textContent = '0';
+            resultsList.innerHTML = '<div class="empty">Nenhuma combinação que some ' + formatBR(target) + '.</div>';
+            solveStatus.textContent = 'Nenhuma solução.';
+            solveStatus.className = 'status error';
+          } else {
+            resultCount.textContent = subsets.length + (subsets.length >= max ? '+' : '');
+            resultsCard.style.display = 'block';
+            subsets.forEach((idxs, solNum) => {
+              idxs.forEach(i => selectedIndices.add(i));
+              let sum = 0;
+              idxs.forEach(i => {
+                const val = parseNumber(sheetData[i][col]);
+                if (val !== null) sum += val;
+              });
+              const card = document.createElement('div');
+              card.className = 'result-card';
+              const header = document.createElement('div');
+              header.className = 'result-card-header';
+              header.innerHTML = '<h3>Combinação ' + (solNum + 1) + '</h3>';
+              const dlBtn = document.createElement('button');
+              dlBtn.type = 'button';
+              dlBtn.className = 'btn-download';
+              dlBtn.textContent = 'Baixar Excel';
+              dlBtn.addEventListener('click', () => {
+                downloadExcel(idxs, 'combinacao_' + (solNum + 1) + '.xlsx');
+              });
+              header.appendChild(dlBtn);
+              card.appendChild(header);
+              const tableWrap = document.createElement('div');
+              tableWrap.innerHTML = buildResultTableHtml(idxs, col);
+              card.appendChild(tableWrap);
+              const sumLine = document.createElement('div');
+              sumLine.className = 'sum-line';
+              sumLine.textContent = 'Soma = ' + formatBR(sum);
+              card.appendChild(sumLine);
+              resultsList.appendChild(card);
+            });
+            solveStatus.textContent = subsets.length + ' combinação(ões) = ' + formatBR(target);
+            solveStatus.className = 'status ok';
+          }
+          renderTable();
+        } catch (err) {
+          console.error(err);
+          solveStatus.textContent = 'Erro: ' + err.message;
+          solveStatus.className = 'status error';
+        } finally {
+          solveBtn.disabled = false;
+          setTimeout(() => {
+            progress.style.display = 'none';
+            progressBar.style.width = '0%';
+          }, 400);
+        }
+      }, 50);
+    });
+
+    targetInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !solveBtn.disabled) solveBtn.click();
+    });
+
+    document.getElementById('downloadMainBtn').addEventListener('click', () => {
+      downloadExcel(null, 'planilha_completa.xlsx');
+    });
+
+    // ========== Seleção de células ==========
+    let selectedCells = new Set();
+    let lastClickedCell = null;
+    let isDragging = false;
+    let dragStartCell = null;
+    let dragTable = null;
+    let dragAdditive = false;
+    let lastSelectionSumText = '';
+
+    const selectionStatus = document.getElementById('selectionStatus');
+    selectionStatus.title = 'Duplo clique para copiar apenas o resultado da soma';
+    selectionStatus.style.cursor = 'pointer';
+    selectionStatus.style.userSelect = 'none';
+
+    function clearCellSelection() {
+      selectedCells.forEach(td => {
+        td.classList.remove('cell-selected');
+        td.classList.remove('cell-selecting');
+      });
+      selectedCells.clear();
+      lastClickedCell = null;
+      updateSelectionSum();
+    }
+
+    function updateSelectionSum() {
+      let sum = 0;
+      let count = 0;
+      selectedCells.forEach(cell => {
+        const n = parseNumber(cell.textContent);
+        if (n !== null) { sum += n; count++; }
+      });
+      if (selectedCells.size === 0 || count === 0) {
+        selectionStatus.style.display = 'none';
+        selectionStatus.innerHTML = '';
+        lastSelectionSumText = '';
+        return;
+      }
+      lastSelectionSumText = formatBR(sum);
+      selectionStatus.style.display = 'block';
+      selectionStatus.innerHTML =
+        'Soma selecionada = <strong style="color:#4ade80">' + lastSelectionSumText + '</strong>' +
+        '  (' + count + (count === 1 ? ' valor' : ' valores') + ') ' +
+        '<button type="button" id="btnCopySumOnly" style="margin-left:10px;padding:2px 10px;font-size:0.75rem;font-weight:600;background:transparent;border:1px solid #4ade80;color:#4ade80;border-radius:5px;cursor:pointer;">Copiar soma</button>';
+      const btn = document.getElementById('btnCopySumOnly');
+      if (btn) {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          copySelectionSumOnly();
+        });
+      }
+    }
+
+    function copySelectionSumOnly() {
+      if (!lastSelectionSumText) return false;
+      const text = lastSelectionSumText;
+      function flashOk() {
+        const btn = document.getElementById('btnCopySumOnly');
+        if (btn) {
+          const old = btn.textContent;
+          btn.textContent = 'Copiado!';
+          btn.style.borderColor = '#22c55e';
+          btn.style.color = '#22c55e';
+          setTimeout(() => {
+            if (document.getElementById('btnCopySumOnly') === btn) {
+              btn.textContent = old;
+              btn.style.borderColor = '#4ade80';
+              btn.style.color = '#4ade80';
+            }
+          }, 900);
+        }
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(flashOk).catch(() => {});
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); flashOk(); } catch (_) {}
+        document.body.removeChild(ta);
+      }
+      return true;
+    }
+
+    selectionStatus.addEventListener('dblclick', (e) => {
+      if (e.target && e.target.id === 'btnCopySumOnly') return;
+      e.preventDefault();
+      e.stopPropagation();
+      copySelectionSumOnly();
+    });
+
+    function getTableCells(table) {
+      return Array.from(table.querySelectorAll('td, th'));
+    }
+
+    function getCellRC(table, cell) {
+      const all = getTableCells(table);
+      const idx = all.indexOf(cell);
+      if (idx < 0) return null;
+      const cols = table.querySelector('tr').children.length;
+      return { row: Math.floor(idx / cols), col: idx % cols, idx, cols, all };
+    }
+
+    function selectRange(table, startCell, endCell, additive) {
+      const s = getCellRC(table, startCell);
+      const e = getCellRC(table, endCell);
+      if (!s || !e) return;
+      const r1 = Math.min(s.row, e.row);
+      const r2 = Math.max(s.row, e.row);
+      const c1 = Math.min(s.col, e.col);
+      const c2 = Math.max(s.col, e.col);
+      if (!additive) {
+        selectedCells.forEach(td => {
+          if (td.closest('table') === table) {
+            td.classList.remove('cell-selected');
+            selectedCells.delete(td);
+          }
+        });
+      }
+      for (let r = r1; r <= r2; r++) {
+        for (let c = c1; c <= c2; c++) {
+          const td = s.all[r * s.cols + c];
+          if (td) {
+            td.classList.add('cell-selected');
+            td.classList.remove('cell-selecting');
+            selectedCells.add(td);
+          }
+        }
+      }
+      lastClickedCell = endCell;
+      updateSelectionSum();
+    }
+
+    function previewRange(table, startCell, endCell) {
+      table.querySelectorAll('.cell-selecting').forEach(el => el.classList.remove('cell-selecting'));
+      const s = getCellRC(table, startCell);
+      const e = getCellRC(table, endCell);
+      if (!s || !e) return;
+      const r1 = Math.min(s.row, e.row);
+      const r2 = Math.max(s.row, e.row);
+      const c1 = Math.min(s.col, e.col);
+      const c2 = Math.max(s.col, e.col);
+      for (let r = r1; r <= r2; r++) {
+        for (let c = c1; c <= c2; c++) {
+          const td = s.all[r * s.cols + c];
+          if (td && !selectedCells.has(td)) td.classList.add('cell-selecting');
+        }
+      }
+    }
+
+    function isOurTable(table) {
+      return table && (table.closest('#tableCard') || table.closest('#resultsCard'));
+    }
+
+    document.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      const cell = e.target.closest('td, th');
+      if (!cell) return;
+      const table = cell.closest('table');
+      if (!isOurTable(table)) return;
+      if (cell.tagName === 'TH' && table.id === 'dataTable' && !e.ctrlKey && !e.metaKey && !e.shiftKey) return;
+      isDragging = true;
+      dragStartCell = cell;
+      dragTable = table;
+      dragAdditive = e.ctrlKey || e.metaKey;
+      if (!dragAdditive && !e.shiftKey) clearCellSelection();
+      cell.classList.add('cell-selected');
+      selectedCells.add(cell);
+      lastClickedCell = cell;
+      updateSelectionSum();
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging || !dragStartCell || !dragTable) return;
+      const cell = e.target.closest('td, th');
+      if (!cell || cell.closest('table') !== dragTable) return;
+      previewRange(dragTable, dragStartCell, cell);
+      const s = getCellRC(dragTable, dragStartCell);
+      const eRC = getCellRC(dragTable, cell);
+      if (s && eRC) {
+        let sum = 0, count = 0;
+        const r1 = Math.min(s.row, eRC.row), r2 = Math.max(s.row, eRC.row);
+        const c1 = Math.min(s.col, eRC.col), c2 = Math.max(s.col, eRC.col);
+        const tempSet = dragAdditive ? new Set(selectedCells) : new Set();
+        for (let r = r1; r <= r2; r++) {
+          for (let c = c1; c <= c2; c++) {
+            const td = s.all[r * s.cols + c];
+            if (td) tempSet.add(td);
+          }
+        }
+        tempSet.forEach(td => {
+          const n = parseNumber(td.textContent);
+          if (n !== null) { sum += n; count++; }
+        });
+        if (count > 0) {
+          lastSelectionSumText = formatBR(sum);
+          selectionStatus.style.display = 'block';
+          selectionStatus.textContent = 'Soma selecionada = ' + lastSelectionSumText +
+            '  (' + count + (count === 1 ? ' valor' : ' valores') + ')';
+        }
+      }
+    });
+
+    let justFinishedDrag = false;
+    document.addEventListener('mouseup', (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      justFinishedDrag = true;
+      setTimeout(() => { justFinishedDrag = false; }, 50);
+      const cell = e.target.closest('td, th');
+      const endCell = (cell && cell.closest('table') === dragTable) ? cell : dragStartCell;
+      if (dragTable && dragStartCell && endCell) {
+        selectRange(dragTable, dragStartCell, endCell, dragAdditive);
+      }
+      if (dragTable) {
+        dragTable.querySelectorAll('.cell-selecting').forEach(el => el.classList.remove('cell-selecting'));
+      }
+      dragStartCell = null;
+      dragTable = null;
+    });
+
+    document.addEventListener('click', (e) => {
+      if (isDragging || justFinishedDrag) return;
+      const cell = e.target.closest('td, th');
+      if (!cell && !e.target.closest('button, input, select, .paste-zone, .toolbar')) {
+        clearCellSelection();
+      }
+    });
+
+    document.addEventListener('copy', (e) => {
+      if (selectedCells.size === 0) return;
+      const byTable = new Map();
+      selectedCells.forEach(cell => {
+        const table = cell.closest('table');
+        if (!byTable.has(table)) byTable.set(table, []);
+        byTable.get(table).push(cell);
+      });
+      const parts = [];
+      byTable.forEach((cells, table) => {
+        const info = getCellRC(table, cells[0]);
+        if (!info) return;
+        cells.sort((a, b) => info.all.indexOf(a) - info.all.indexOf(b));
+        const minIdx = info.all.indexOf(cells[0]);
+        const maxIdx = info.all.indexOf(cells[cells.length - 1]);
+        const minRow = Math.floor(minIdx / info.cols);
+        const maxRow = Math.floor(maxIdx / info.cols);
+        const minCol = Math.min(...cells.map(c => info.all.indexOf(c) % info.cols));
+        const maxCol = Math.max(...cells.map(c => info.all.indexOf(c) % info.cols));
+        const set = new Set(cells);
+        for (let r = minRow; r <= maxRow; r++) {
+          const rowVals = [];
+          for (let c = minCol; c <= maxCol; c++) {
+            const td = info.all[r * info.cols + c];
+            rowVals.push(set.has(td) ? (td.textContent || '').trim() : '');
+          }
+          if (rowVals.some(v => v !== '')) parts.push(rowVals.join('\t'));
+        }
+      });
+      if (parts.length) {
+        e.preventDefault();
+        e.clipboardData.setData('text/plain', parts.join('\n'));
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') clearCellSelection();
+    });
+
+    // ========== BLOQUEAR F12 e teclas de inspeção ==========
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        return false;
+      }
+      if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+        e.preventDefault();
+        return false;
+      }
+      if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j')) {
+        e.preventDefault();
+        return false;
+      }
+      if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+        e.preventDefault();
+        return false;
+      }
+      if (e.ctrlKey && (e.key === 'u' || e.key === 'U')) {
+        e.preventDefault();
+        return false;
+      }
+    });
+  </script>
+</body>
+</html>

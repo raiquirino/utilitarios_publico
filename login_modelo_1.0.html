@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modelo com Login</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0f1419;
+      color: #e7ecf3;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ===== Conteúdo da página (exemplo) ===== */
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 12px;
+    }
+
+    p {
+      color: #8b9bb4;
+      margin-bottom: 20px;
+    }
+
+    /* ===== Tela de Login ===== */
+    #loginOverlay {
+      position: fixed;
+      inset: 0;
+      background: #0f1419;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .login-box {
+      background: #1a2332;
+      border: 1px solid #2d3a4f;
+      border-radius: 12px;
+      padding: 32px 28px;
+      width: 100%;
+      max-width: 340px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    .login-box h2 {
+      margin-bottom: 8px;
+      font-size: 1.3rem;
+      color: #e7ecf3;
+    }
+
+    .login-box .login-sub {
+      color: #8b9bb4;
+      font-size: 0.8rem;
+      margin-bottom: 20px;
+    }
+
+    .login-box input {
+      width: 100%;
+      padding: 11px 14px;
+      margin-bottom: 12px;
+      background: #0f1419;
+      border: 1px solid #2d3a4f;
+      border-radius: 6px;
+      color: #e7ecf3;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .login-box input:focus {
+      border-color: #3b82f6;
+    }
+
+    .login-box button {
+      width: 100%;
+      padding: 11px;
+      margin-top: 6px;
+      background: #3b82f6;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .login-box button:hover {
+      background: #2563eb;
+    }
+
+    .login-error {
+      color: #ef4444;
+      font-size: 0.85rem;
+      margin-top: 12px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========== TELA DE LOGIN ========== -->
+  <div id="loginOverlay">
+    <div class="login-box">
+      <h2>Acesso Restrito</h2>
+      <div class="login-sub">Nome da sua página</div>
+      <input type="text" id="loginUser" placeholder="Usuário" autocomplete="off" autofocus>
+      <input type="password" id="loginPass" placeholder="Senha">
+      <button id="loginBtn">Entrar</button>
+      <div class="login-error" id="loginError">Usuário ou senha incorretos</div>
+    </div>
+  </div>
+
+  <!-- ========== CONTEÚDO DA PÁGINA ========== -->
+  <!-- Coloque todo o conteúdo da sua página dentro desta div -->
+  <div id="mainApp" style="display:none;">
+    <div class="container">
+      <h1>Página protegida</h1>
+      <p>Se você está vendo isso, o login funcionou.</p>
+      <p>Substitua este conteúdo pelo que você quiser.</p>
+    </div>
+  </div>
+
+  <script>
+    // =====================================================
+    // 1. LOGIN (vários usuários)
+    // Edite apenas o objeto USUARIOS abaixo
+    // =====================================================
+    const USUARIOS = {
+      'rai': 'Rai.2310',
+      'admin': 'Admin@2026',
+      'joao': 'joao2024'
+      // adicione mais:
+      // 'nome': 'senha',
+    };
+
+    const loginOverlay = document.getElementById('loginOverlay');
+    const loginUser = document.getElementById('loginUser');
+    const loginPass = document.getElementById('loginPass');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginError = document.getElementById('loginError');
+    const mainApp = document.getElementById('mainApp');
+
+    // Se já logou nesta sessão, não pede de novo
+    if (sessionStorage.getItem('logado') === 'true') {
+      loginOverlay.style.display = 'none';
+      mainApp.style.display = 'block';
+    }
+
+    function tentarLogin() {
+      const user = loginUser.value.trim();
+      const pass = loginPass.value;
+
+      if (USUARIOS[user] && USUARIOS[user] === pass) {
+        sessionStorage.setItem('logado', 'true');
+        loginOverlay.style.display = 'none';
+        mainApp.style.display = 'block';
+        loginError.style.display = 'none';
+      } else {
+        loginError.style.display = 'block';
+        loginPass.value = '';
+        loginPass.focus();
+      }
+    }
+
+    loginBtn.addEventListener('click', tentarLogin);
+    loginPass.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') tentarLogin();
+    });
+    loginUser.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') loginPass.focus();
+    });
+
+    // =====================================================
+    // 2. BLOQUEAR F12 e teclas de inspeção
+    // =====================================================
+    document.addEventListener('keydown', function(e) {
+      // F12
+      if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        return false;
+      }
+      // Ctrl + Shift + I
+      if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+        e.preventDefault();
+        return false;
+      }
+      // Ctrl + Shift + J
+      if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j')) {
+        e.preventDefault();
+        return false;
+      }
+      // Ctrl + Shift + C
+      if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+        e.preventDefault();
+        return false;
+      }
+      // Ctrl + U (ver código-fonte)
+      if (e.ctrlKey && (e.key === 'u' || e.key === 'U')) {
+        e.preventDefault();
+        return false;
+      }
+    });
+  </script>
+</body>
+</html>

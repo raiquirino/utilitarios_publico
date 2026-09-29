@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Editor SPED - Comparativo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 12px 16px;
+      background: #f0f2f5;
+      max-width: 1600px;
+      margin: 0 auto;
+      color: #222;
+    }
+    h2 { margin: 0 0 4px 0; font-size: 18px; }
+    .descricao { color: #555; margin: 0 0 10px 0; font-size: 13px; line-height: 1.35; }
+
+    .controles {
+      background: white;
+      border: 1px solid #ccc;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .campo { margin-bottom: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .campo label { font-weight: bold; min-width: auto; font-size: 13px; }
+    .campo input[type="text"] {
+      padding: 5px 8px;
+      font-size: 13px;
+      border: 1px solid #aaa;
+      border-radius: 4px;
+      width: 240px;
+    }
+    input[type="file"] { margin: 0; font-size: 13px; }
+
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      font-size: 13px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 0;
+    }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
+
+    .secao {
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+    }
+    .secao h3 {
+      margin: 0 0 6px 0;
+      font-size: 14px;
+      color: #1e40af;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 4px;
+    }
+
+    /* Blocos de registro compactos (0000 / 0035 / 9900) */
+    .secao-registros {
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 0;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+    .secao-registros-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      user-select: none;
+      background: #f8fafc;
+      border-bottom: 1px solid transparent;
+    }
+    .secao-registros-header:hover {
+      background: #f1f5f9;
+    }
+    .secao-registros-header .titulo-recolhido {
+      font-size: 13px;
+      font-weight: bold;
+      color: #1e40af;
+      margin: 0;
+    }
+    .secao-registros-header .chevron {
+      font-size: 12px;
+      color: #64748b;
+      transition: transform 0.15s ease;
+    }
+    .secao-registros.aberta .secao-registros-header {
+      border-bottom-color: #e5e7eb;
+    }
+    .secao-registros.aberta .chevron {
+      transform: rotate(90deg);
+    }
+    .secao-registros-corpo {
+      display: none;
+      padding: 8px 12px;
+    }
+    .secao-registros.aberta .secao-registros-corpo {
+      display: block;
+    }
+    .secao-registros .reg-bloco {
+      margin: 0;
+      padding: 0;
+    }
+    .secao-registros .reg-bloco + .reg-bloco {
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .secao-registros .reg-titulo {
+      font-size: 12px;
+      font-weight: bold;
+      color: #1e40af;
+      margin: 0 0 2px 0;
+      line-height: 1.15;
+    }
+    .secao-registros .reg-hint {
+      font-size: 11px;
+      color: #64748b;
+      margin: 0 0 2px 0;
+      line-height: 1.15;
+    }
+
+    .linha-completa {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      align-items: center;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 3px 5px;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      margin-bottom: 0;
+    }
+    .linha-completa input {
+      font-family: monospace;
+      font-size: 12px;
+      padding: 2px 4px;
+      border: 1px solid #94a3b8;
+      border-radius: 3px;
+      min-width: 32px;
+      height: 22px;
+      box-sizing: border-box;
+    }
+    .linha-completa input.destaque {
+      background: #fef3c7;
+      border-color: #f59e0b;
+      font-weight: bold;
+    }
+    .linha-completa .pipe {
+      color: #64748b;
+      font-weight: bold;
+      line-height: 1;
+    }
+
+    .preview-linha {
+      background: #ecfdf5;
+      border: 1px solid #10b981;
+      padding: 2px 6px;
+      font-family: monospace;
+      font-size: 11px;
+      word-break: break-all;
+      margin-top: 2px;
+      border-radius: 3px;
+      line-height: 1.25;
+    }
+
+    .colunas {
+      display: flex;
+      gap: 0;
+    }
+    .coluna {
+      flex: 1;
+      min-width: 0;
+    }
+    .coluna h3 {
+      margin: 0 0 4px 0;
+      font-size: 13px;
+      padding: 0 6px;
+    }
+
+    .divisor {
+      width: 4px;
+      background: #3b82f6;
+      flex-shrink: 0;
+      margin: 0 2px;
+      border-radius: 2px;
+    }
+
+    .scroll-container {
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      height: 40vh;
+      overflow: auto;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .linha {
+      padding: 1px 10px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 18px;
+      box-sizing: border-box;
+      cursor: default;
+    }
+    .linha.diff-orig { background: #fecaca; }
+    .linha.diff-alt { background: #fef08a; }
+    .linha.nova { background: #bbf7d0; }
+    .linha.vazia { background: #f1f5f9; color: transparent; }
+
+    .linha.hover-pair {
+      outline: 2px solid #3b82f6;
+      outline-offset: -2px;
+      background: #dbeafe !important;
+    }
+
+    .editor-area {
+      width: 100%;
+      height: calc(5 * 1.45em + 16px); /* ~5 linhas */
+      max-height: calc(5 * 1.45em + 16px);
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      padding: 8px;
+      border: 1px solid #94a3b8;
+      border-radius: 6px;
+      resize: none;
+      white-space: pre;
+      overflow: hidden; /* rolagem só com foco */
+      box-sizing: border-box;
+    }
+    .editor-area:focus {
+      overflow: auto;
+      outline: 2px solid #3b82f6;
+      outline-offset: -1px;
+    }
+
+    .aviso {
+      color: #b45309;
+      font-size: 12px;
+      margin-top: 0;
+      background: #fffbeb;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #fcd34d;
+    }
+    .destaque-texto {
+      background: #fef3c7;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+    .legenda {
+      font-size: 12px;
+      margin: 0 0 4px 0;
+      color: #555;
+      line-height: 1.4;
+    }
+    .legenda span {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      margin-right: 8px;
+    }
+    .legenda .diff-orig { background: #fecaca; }
+    .legenda .diff-alt { background: #fef08a; }
+    .legenda .nova { background: #bbf7d0; }
+
+    .nome-arquivo {
+      font-size: 12px;
+      color: #334155;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Editor SPED – Comparativo entre Arquivos</h2>
+  <p class="descricao">
+    Comparativo visual entre Original e Alterado. <strong>Somente</strong> as alterações pedidas são feitas — nenhum total é recalculado.
+  </p>
+
+  <div class="controles">
+    <div class="campo">
+      <label>Arquivo SPED:</label>
+      <input type="file" id="arquivo" accept=".txt">
+    </div>
+    <div class="nome-arquivo" id="nomeArquivoInfo">Nenhum arquivo carregado</div>
+    <button id="btnProcessar" disabled>Processar e Gerar</button>
+    <button id="btnBaixar" disabled>Baixar arquivo modificado</button>
+  </div>
+
+  <!-- ==================== REGISTROS 0000 / 0035 / 9900 (compacto, acima do comparativo) ==================== -->
+  <div class="secao-registros" id="secaoRegistros">
+    <div class="secao-registros-header" id="btnToggleRegistros" title="Clique para expandir/recolher">
+      <span class="titulo-recolhido">Registros 0000 / 0035 / 9900 — clique para expandir</span>
+      <span class="chevron">▶</span>
+    </div>
+    <div class="secao-registros-corpo">
+      <div class="reg-bloco">
+        <div class="reg-titulo">Registro 0000 – Abertura do Arquivo</div>
+        <div class="reg-hint">Campos em amarelo são os que você normalmente altera.</div>
+        <div class="linha-completa" id="campos0000">
+          <span class="pipe">|</span>
+          <input type="text" id="f0000_reg" value="0000" style="width:44px" readonly>
+          <span class="pipe">|</span>
+          <input type="text" id="f0000_codver" value="006" style="width:36px">
+          <span class="pipe">|</span>
+          <input type="text" id="f0000_tipo" value="0" style="width:26px">
+          <span class="pipe">|</span>
+          <input type="text" id="f0000_sit" value="" style="width:26px">
+          <span class="pipe">|</span>
+          <input type="text" id="f0000_numrec" value="" style="width:36px">
+          <span class="pipe">|</span>
+          <input type="text" id="f0000_dtini" value="01072026" style="width:72px">
+          <span class="pipe">|</span>
+          <input type="text" id="f0000_dtfin" value="31072026" style="width:72px">
+          <span class="pipe">|</span>
+          <input type="text" id="f0000_nome" value="MH BRASILIA ADMINISTRADORA DE EMPREENDIMENTOS LTDA" class="destaque" style="width:320px">
+          <span class="pipe">|</span>
+          <input type="text" id="f0000_cnpj" value="34759088000141" class="destaque" style="width:120px">
+          <span class="pipe">|</span>
+          <input type="text" id="f0000_uf" value="DF" style="width:32px">
+          <span class="pipe">|</span>
+          <input type="text" id="f0000_codmun" value="5300108" style="width:70px">
+          <span class="pipe">|</span>
+          <input type="text" id="f0000_suframa" value="" style="width:36px">
+          <span class="pipe">|</span>
+          <input type="text" id="f0000_indnatpj" value="05" class="destaque" style="width:32px">
+          <span class="pipe">|</span>
+          <input type="text" id="f0000_indativ" value="1" style="width:26px">
+          <span class="pipe">|</span>
+        </div>
+        <div class="preview-linha" id="preview0000">—</div>
+      </div>
+
+      <div class="reg-bloco">
+        <div class="reg-titulo">Registro 0035 – SCP</div>
+        <div class="linha-completa">
+          <span class="pipe">|</span>
+          <input type="text" id="f0035_reg" value="0035" style="width:44px" readonly>
+          <span class="pipe">|</span>
+          <input type="text" id="f0035_codscp" value="34759088000222" class="destaque" style="width:120px">
+          <span class="pipe">|</span>
+          <input type="text" id="f0035_desc" value="SCP MH BRASILIA" class="destaque" style="width:180px">
+          <span class="pipe">|</span>
+          <input type="text" id="f0035_inf" value="" style="width:100px">
+          <span class="pipe">|</span>
+        </div>
+        <div class="preview-linha" id="preview0035">—</div>
+      </div>
+
+      <div class="reg-bloco">
+        <div class="reg-titulo">Registro 9900 – Contador do 0035</div>
+        <div class="linha-completa">
+          <span class="pipe">|</span>
+          <input type="text" id="f9900_reg" value="9900" style="width:44px" readonly>
+          <span class="pipe">|</span>
+          <input type="text" id="f9900_regcont" value="0035" class="destaque" style="width:50px">
+          <span class="pipe">|</span>
+          <input type="text" id="f9900_qtd" value="1" class="destaque" style="width:36px">
+          <span class="pipe">|</span>
+        </div>
+        <div class="preview-linha" id="preview9900">—</div>
+      </div>
+
+      <div class="aviso" style="margin-top:6px; margin-bottom:0;">
+        • Campos em <span class="destaque-texto">amarelo</span> = normalmente alterados ·
+        Apenas 1 registro |0035| e |9900|0035|1| ·
+        <strong>Nenhum total</strong> (9900|9900, 9990, 9999) é alterado.
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== EDITOR EDITÁVEL (acima do comparativo) ==================== -->
+  <div class="secao" style="margin-top:6px; margin-bottom:8px;">
+    <h3>Arquivo Alterado – Editável</h3>
+    <p style="font-size:12px; color:#555; margin:0 0 6px 0;">
+      Edite manualmente o arquivo gerado. O download usa o conteúdo deste campo com o <strong>nome original</strong>.
+    </p>
+
+    <div class="campo" style="margin-bottom:6px; background:#f8fafc; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0; flex-wrap:wrap; gap:6px;">
+      <label for="buscaEditor" style="min-width:auto;">Localizar:</label>
+      <input type="text" id="buscaEditor" placeholder="Texto (ex: |C100| ou CNPJ)..." style="width:220px; max-width:280px; padding:5px 8px; font-size:13px; border:1px solid #aaa; border-radius:4px;">
+      <button type="button" id="btnBuscarAnt" title="Anterior (Shift+Enter)">◀ Anterior</button>
+      <button type="button" id="btnBuscarProx" title="Próximo (Enter)">Próximo ▶</button>
+      <span id="buscaInfo" style="font-size:12px; color:#475569; min-width:80px;"></span>
+
+      <span style="width:1px; height:22px; background:#cbd5e1; margin:0 4px;"></span>
+
+      <label for="irLinha" style="min-width:auto;">Ir p/ linha:</label>
+      <input type="number" id="irLinha" min="1" placeholder="Nº" style="width:70px; padding:5px 6px; font-size:13px; border:1px solid #aaa; border-radius:4px;">
+      <button type="button" id="btnIrLinha" title="Ir para a linha">Ir</button>
+      <span id="linhaInfo" style="font-size:12px; color:#475569;"></span>
+    </div>
+
+    <textarea id="editorAlterado" class="editor-area" placeholder="O conteúdo alterado aparecerá aqui após processar..."></textarea>
+    <div style="margin-top:6px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <button id="btnBaixar2" disabled>Baixar arquivo modificado</button>
+      <span id="nomeDownload" style="font-size:12px; color:#475569;"></span>
+    </div>
+  </div>
+
+  <div class="legenda">
+    Legenda do comparativo:
+    <span class="diff-orig">Linha diferente (Original)</span>
+    <span class="diff-alt">Linha diferente (Alterado)</span>
+    <span class="nova">Linha nova (só no Alterado)</span>
+  </div>
+
+  <!-- ==================== COMPARATIVO ==================== -->
+  <div class="colunas" style="margin-top:4px;">
+    <div class="coluna">
+      <h3>Original</h3>
+      <div class="scroll-container" id="scrollOriginal"></div>
+    </div>
+    <div class="divisor"></div>
+    <div class="coluna">
+      <h3>Alterado (visual)</h3>
+      <div class="scroll-container" id="scrollAlterado"></div>
+    </div>
+  </div>
+
+  <script>
+    let conteudoOriginal = '';
+    let nomeArquivoOriginal = '';
+
+    const arquivoInput = document.getElementById('arquivo');
+    const btnProcessar = document.getElementById('btnProcessar');
+    const btnBaixar = document.getElementById('btnBaixar');
+    const btnBaixar2 = document.getElementById('btnBaixar2');
+    const scrollOriginal = document.getElementById('scrollOriginal');
+    const scrollAlterado = document.getElementById('scrollAlterado');
+    const editorAlterado = document.getElementById('editorAlterado');
+    const nomeArquivoInfo = document.getElementById('nomeArquivoInfo');
+    const nomeDownload = document.getElementById('nomeDownload');
+    const buscaEditor = document.getElementById('buscaEditor');
+    const btnBuscarProx = document.getElementById('btnBuscarProx');
+    const btnBuscarAnt = document.getElementById('btnBuscarAnt');
+    const buscaInfo = document.getElementById('buscaInfo');
+    const irLinha = document.getElementById('irLinha');
+    const btnIrLinha = document.getElementById('btnIrLinha');
+    const linhaInfo = document.getElementById('linhaInfo');
+
+    // Rolagem sincronizada
+    let sincronizando = false;
+    scrollOriginal.addEventListener('scroll', () => {
+      if (sincronizando) return;
+      sincronizando = true;
+      scrollAlterado.scrollTop = scrollOriginal.scrollTop;
+      sincronizando = false;
+    });
+    scrollAlterado.addEventListener('scroll', () => {
+      if (sincronizando) return;
+      sincronizando = true;
+      scrollOriginal.scrollTop = scrollAlterado.scrollTop;
+      sincronizando = false;
+    });
+
+    function montarLinha0000() {
+      return [
+        '', 
+        document.getElementById('f0000_reg').value.trim(),
+        document.getElementById('f0000_codver').value.trim(),
+        document.getElementById('f0000_tipo').value.trim(),
+        document.getElementById('f0000_sit').value.trim(),
+        document.getElementById('f0000_numrec').value.trim(),
+        document.getElementById('f0000_dtini').value.trim(),
+        document.getElementById('f0000_dtfin').value.trim(),
+        document.getElementById('f0000_nome').value.trim(),
+        document.getElementById('f0000_cnpj').value.trim(),
+        document.getElementById('f0000_uf').value.trim(),
+        document.getElementById('f0000_codmun').value.trim(),
+        document.getElementById('f0000_suframa').value.trim(),
+        document.getElementById('f0000_indnatpj').value.trim(),
+        document.getElementById('f0000_indativ').value.trim(),
+        ''
+      ].join('|');
+    }
+
+    function montarLinha0035() {
+      return [
+        '',
+        document.getElementById('f0035_reg').value.trim(),
+        document.getElementById('f0035_codscp').value.trim(),
+        document.getElementById('f0035_desc').value.trim(),
+        document.getElementById('f0035_inf').value.trim(),
+        ''
+      ].join('|');
+    }
+
+    function montarLinha9900() {
+      return [
+        '',
+        document.getElementById('f9900_reg').value.trim(),
+        document.getElementById('f9900_regcont').value.trim(),
+        document.getElementById('f9900_qtd').value.trim(),
+        ''
+      ].join('|');
+    }
+
+    function atualizarPreviews() {
+      document.getElementById('preview0000').textContent = montarLinha0000();
+      document.getElementById('preview0035').textContent = montarLinha0035();
+      document.getElementById('preview9900').textContent = montarLinha9900();
+    }
+
+    // Atualiza no editor (se já tiver conteúdo) as linhas 0000 / 0035 / 9900|0035
+    // para que as alterações dos campos fiquem imediatamente no arquivo final.
+    function atualizarEditorComFormulario() {
+      const texto = editorAlterado.value;
+      if (!texto || !texto.trim()) return;
+
+      const linha0000Nova = montarLinha0000();
+      const linha0035Nova = montarLinha0035();
+      const linha9900Nova = montarLinha9900();
+
+      const linhas = texto.split(/\r?\n/);
+      let mudou = false;
+
+      for (let i = 0; i < linhas.length; i++) {
+        const l = linhas[i];
+        if (l.startsWith('|0000|')) {
+          if (linhas[i] !== linha0000Nova) {
+            linhas[i] = linha0000Nova;
+            mudou = true;
+          }
+        } else if (l.startsWith('|0035|')) {
+          if (linhas[i] !== linha0035Nova) {
+            linhas[i] = linha0035Nova;
+            mudou = true;
+          }
+        } else if (isLinha9900De(l, '0035')) {
+          if (linhas[i] !== linha9900Nova) {
+            linhas[i] = linha9900Nova;
+            mudou = true;
+          }
+        }
+      }
+
+      if (mudou) {
+        editorAlterado.value = linhas.join('\n');
+        // Atualiza o comparativo visual com o conteúdo atual do editor
+        renderDiff(conteudoOriginal, editorAlterado.value);
+      }
+    }
+
+    function onCampoFormularioChange() {
+      atualizarPreviews();
+      atualizarEditorComFormulario();
+    }
+
+    document.querySelectorAll('#campos0000 input, #f0035_codscp, #f0035_desc, #f0035_inf, #f9900_regcont, #f9900_qtd')
+      .forEach(el => el.addEventListener('input', onCampoFormularioChange));
+
+    atualizarPreviews();
+
+    // Seção de registros sempre começa recolhida
+    const secaoRegistros = document.getElementById('secaoRegistros');
+    const btnToggleRegistros = document.getElementById('btnToggleRegistros');
+    const tituloRecolhido = btnToggleRegistros.querySelector('.titulo-recolhido');
+    btnToggleRegistros.addEventListener('click', function() {
+      const aberta = secaoRegistros.classList.toggle('aberta');
+      tituloRecolhido.textContent = aberta
+        ? 'Registros 0000 / 0035 / 9900 — clique para recolher'
+        : 'Registros 0000 / 0035 / 9900 — clique para expandir';
+    });
+
+    arquivoInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      nomeArquivoOriginal = file.name;
+      nomeArquivoInfo.textContent = 'Arquivo: ' + nomeArquivoOriginal;
+      nomeDownload.textContent = 'Será salvo como: ' + nomeArquivoOriginal;
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        conteudoOriginal = event.target.result;
+
+        const linhas = conteudoOriginal.split(/\r?\n/);
+        const linha0000 = linhas.find(l => l.startsWith('|0000|'));
+        if (linha0000) {
+          const p = linha0000.split('|');
+          if (p.length > 14) {
+            document.getElementById('f0000_codver').value = p[2] || '006';
+            document.getElementById('f0000_tipo').value = p[3] || '0';
+            document.getElementById('f0000_sit').value = p[4] || '';
+            document.getElementById('f0000_numrec').value = p[5] || '';
+            document.getElementById('f0000_dtini').value = p[6] || '';
+            document.getElementById('f0000_dtfin').value = p[7] || '';
+            document.getElementById('f0000_uf').value = p[10] || 'DF';
+            document.getElementById('f0000_codmun').value = p[11] || '';
+            document.getElementById('f0000_suframa').value = p[12] || '';
+            document.getElementById('f0000_indativ').value = p[14] || '1';
+          }
+        }
+
+        atualizarPreviews();
+        btnProcessar.disabled = false;
+        scrollOriginal.innerHTML = '<div class="linha">Arquivo carregado. Clique em Processar.</div>';
+        scrollAlterado.innerHTML = '<div class="linha">Arquivo carregado. Clique em Processar.</div>';
+        editorAlterado.value = '';
+        btnBaixar.disabled = true;
+        btnBaixar2.disabled = true;
+        buscaUltimoTermo = '';
+        buscaPosicoes = [];
+        buscaIndiceAtual = -1;
+        buscaInfo.textContent = '';
+        buscaEditor.value = '';
+        irLinha.value = '';
+        linhaInfo.textContent = '';
+      };
+      reader.readAsText(file, 'ISO-8859-1');
+    });
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function getReg(linha) {
+      if (!linha || !linha.startsWith('|')) return null;
+      return linha.split('|')[1] || null;
+    }
+
+    function isLinha9900De(linha, regCont) {
+      if (!linha || !linha.startsWith('|9900|')) return false;
+      const p = linha.split('|');
+      return p[2] === regCont;
+    }
+
+    // Diff robusto:
+    // - 0000 (e outros registros únicos) → modificação
+    // - 0035 e 9900|0035 inseridos → linha nova
+    // - 0035 / 9900|0035 removidos do original → linha só no original
+    // Não trata dois 9900 diferentes como "modificação" só porque compartilham o tipo.
+    function renderDiff(originalText, alteradoText) {
+      const A = originalText.split(/\r?\n/);
+      const B = alteradoText.split(/\r?\n/);
+
+      const resultOrig = [];
+      const resultAlt  = [];
+
+      let i = 0;
+      let j = 0;
+
+      while (i < A.length || j < B.length) {
+        const lo = i < A.length ? A[i] : null;
+        const la = j < B.length ? B[j] : null;
+
+        // 1) Linhas idênticas
+        if (lo === la) {
+          resultOrig.push({ text: lo, type: 'igual' });
+          resultAlt.push({ text: la, type: 'igual' });
+          i++; j++;
+          continue;
+        }
+
+        const regO = getReg(lo);
+        const regA = getReg(la);
+
+        // 2) Registro único esperado como edição (principalmente 0000)
+        //    Só trata como modificação se for um registro que normalmente aparece uma única vez.
+        const regsUnicos = { '0000': true, '0001': true, '0990': true, '9990': true, '9999': true };
+        if (lo && la && regO && regA && regO === regA && regsUnicos[regO]) {
+          resultOrig.push({ text: lo, type: 'diff-orig' });
+          resultAlt.push({ text: la, type: 'diff-alt' });
+          i++; j++;
+          continue;
+        }
+
+        // 3) Linha nova no alterado (0035 ou 9900|0035, ou qualquer linha que não exista mais à frente no original)
+        const laExisteMaisAFrente = la && A.slice(i).some(l => l === la);
+        if (la && !laExisteMaisAFrente) {
+          resultOrig.push({ text: '', type: 'vazia' });
+          resultAlt.push({ text: la, type: 'nova' });
+          j++;
+          continue;
+        }
+
+        // 4) Linha só no original (foi removida ou ainda não chegou a correspondente)
+        if (lo) {
+          resultOrig.push({ text: lo, type: 'diff-orig' });
+          resultAlt.push({ text: '', type: 'vazia' });
+          i++;
+          continue;
+        }
+
+        // 5) Fallback
+        if (la) {
+          resultOrig.push({ text: '', type: 'vazia' });
+          resultAlt.push({ text: la, type: 'nova' });
+          j++;
+        }
+      }
+
+      let htmlOrig = '';
+      let htmlAlt  = '';
+
+      for (let k = 0; k < resultOrig.length; k++) {
+        const o = resultOrig[k];
+        const a = resultAlt[k];
+        htmlOrig += `<div class="linha ${o.type}" data-idx="${k}">${o.text ? escapeHtml(o.text) : '&nbsp;'}</div>`;
+        htmlAlt  += `<div class="linha ${a.type}" data-idx="${k}">${a.text ? escapeHtml(a.text) : '&nbsp;'}</div>`;
+      }
+
+      scrollOriginal.innerHTML = htmlOrig;
+      scrollAlterado.innerHTML = htmlAlt;
+
+      // Hover sincronizado
+      const linhasOrig = scrollOriginal.querySelectorAll('.linha');
+      const linhasAlt  = scrollAlterado.querySelectorAll('.linha');
+
+      function limparHover() {
+        linhasOrig.forEach(l => l.classList.remove('hover-pair'));
+        linhasAlt.forEach(l => l.classList.remove('hover-pair'));
+      }
+
+      function addHover(linhas, otherContainer) {
+        linhas.forEach(linha => {
+          linha.addEventListener('mouseenter', () => {
+            limparHover();
+            const idx = linha.dataset.idx;
+            linha.classList.add('hover-pair');
+            const correspondente = otherContainer.querySelector(`.linha[data-idx="${idx}"]`);
+            if (correspondente) correspondente.classList.add('hover-pair');
+          });
+          linha.addEventListener('mouseleave', limparHover);
+        });
+      }
+
+      addHover(linhasOrig, scrollAlterado);
+      addHover(linhasAlt, scrollOriginal);
+    }
+
+    function baixarArquivo() {
+      const conteudo = editorAlterado.value;
+      if (!conteudo) return;
+
+      const nome = nomeArquivoOriginal || 'SPED_modificado.txt';
+
+      const blob = new Blob([conteudo], { type: 'text/plain;charset=ISO-8859-1' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nome;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    btnProcessar.addEventListener('click', function() {
+      if (!conteudoOriginal) return;
+
+      const linha0000Nova = montarLinha0000();
+      const linha0035     = montarLinha0035();
+      const linha9900_0035 = montarLinha9900();
+
+      // Se o editor já tiver conteúdo (edições manuais), usa ele como base.
+      // Assim as alterações feitas no arquivo editável permanecem ao processar de novo.
+      const base = (editorAlterado.value && editorAlterado.value.trim()) ? editorAlterado.value : conteudoOriginal;
+      let linhas = base.split(/\r?\n/);
+      let linhasNovas = [];
+      let jaInseriu0035 = false;
+      let jaInseriu9900_0035 = false;
+
+      for (let i = 0; i < linhas.length; i++) {
+        let linha = linhas[i];
+
+        // Substitui o 0000
+        if (linha.startsWith('|0000|')) {
+          linhasNovas.push(linha0000Nova);
+          continue;
+        }
+
+        // Remove qualquer 0035 antigo (vamos inserir só o nosso)
+        if (linha.startsWith('|0035|')) {
+          continue;
+        }
+
+        // Remove eventual 9900|0035 antigo (vamos inserir só o nosso)
+        if (isLinha9900De(linha, '0035')) {
+          continue;
+        }
+
+        // Insere 0035 logo após o 0001
+        if (linha.startsWith('|0001|') && !jaInseriu0035) {
+          linhasNovas.push(linha);
+          linhasNovas.push(linha0035);
+          jaInseriu0035 = true;
+          continue;
+        }
+
+        // Insere 9900|0035 na posição ordenada (antes do primeiro REG_CONT > 0035)
+        if (linha.startsWith('|9900|') && !jaInseriu9900_0035) {
+          const regAtual = linha.split('|')[2] || '';
+          if (regAtual > '0035') {
+            linhasNovas.push(linha9900_0035);
+            jaInseriu9900_0035 = true;
+          }
+        }
+
+        linhasNovas.push(linha);
+      }
+
+      // Fallback: se não achou posição ordenada, coloca antes do 9900|9900|
+      if (!jaInseriu9900_0035) {
+        const idx = linhasNovas.findIndex(l => l.startsWith('|9900|9900|'));
+        if (idx >= 0) {
+          linhasNovas.splice(idx, 0, linha9900_0035);
+        } else {
+          // Último recurso: antes do 9990
+          const idx9990 = linhasNovas.findIndex(l => l.startsWith('|9990|'));
+          if (idx9990 >= 0) {
+            linhasNovas.splice(idx9990, 0, linha9900_0035);
+          } else {
+            linhasNovas.push(linha9900_0035);
+          }
+        }
+      }
+
+      // Se por algum motivo não havia 0001, ainda assim garante o 0035 perto do início
+      if (!jaInseriu0035) {
+        const idx0001 = linhasNovas.findIndex(l => l.startsWith('|0001|'));
+        if (idx0001 >= 0) {
+          linhasNovas.splice(idx0001 + 1, 0, linha0035);
+        } else {
+          const idx0000 = linhasNovas.findIndex(l => l.startsWith('|0000|'));
+          if (idx0000 >= 0) {
+            linhasNovas.splice(idx0000 + 1, 0, linha0035);
+          } else {
+            linhasNovas.unshift(linha0035);
+          }
+        }
+      }
+
+      const conteudoModificado = linhasNovas.join('\n');
+
+      editorAlterado.value = conteudoModificado;
+      renderDiff(conteudoOriginal, conteudoModificado);
+
+      // Limpa estado da busca ao gerar novo arquivo
+      buscaUltimoTermo = '';
+      buscaPosicoes = [];
+      buscaIndiceAtual = -1;
+      buscaInfo.textContent = '';
+      buscaEditor.value = '';
+      irLinha.value = '';
+      linhaInfo.textContent = '';
+
+      btnBaixar.disabled = false;
+      btnBaixar2.disabled = false;
+    });
+
+    btnBaixar.addEventListener('click', baixarArquivo);
+    btnBaixar2.addEventListener('click', baixarArquivo);
+
+    // ========== Localizar no editor ==========
+    let buscaUltimoTermo = '';
+    let buscaPosicoes = [];
+    let buscaIndiceAtual = -1;
+
+    function atualizarBuscaPosicoes(termo) {
+      buscaPosicoes = [];
+      if (!termo) {
+        buscaInfo.textContent = '';
+        buscaIndiceAtual = -1;
+        return;
+      }
+      const texto = editorAlterado.value;
+      const termoLower = termo.toLowerCase();
+      const textoLower = texto.toLowerCase();
+      let pos = 0;
+      while ((pos = textoLower.indexOf(termoLower, pos)) !== -1) {
+        buscaPosicoes.push(pos);
+        pos += termo.length;
+      }
+      buscaUltimoTermo = termo;
+      if (buscaPosicoes.length === 0) {
+        buscaInfo.textContent = 'Nenhuma ocorrência';
+        buscaIndiceAtual = -1;
+      } else {
+        buscaInfo.textContent = '1 de ' + buscaPosicoes.length;
+        buscaIndiceAtual = 0;
+      }
+    }
+
+    function irParaOcorrencia(indice) {
+      if (buscaPosicoes.length === 0) return;
+      const termo = buscaEditor.value;
+      if (!termo) return;
+
+      // Se o texto mudou, recalcula
+      if (termo !== buscaUltimoTermo) {
+        atualizarBuscaPosicoes(termo);
+        if (buscaPosicoes.length === 0) return;
+        indice = 0;
+      }
+
+      if (indice < 0) indice = buscaPosicoes.length - 1;
+      if (indice >= buscaPosicoes.length) indice = 0;
+      buscaIndiceAtual = indice;
+
+      const start = buscaPosicoes[indice];
+      const end = start + termo.length;
+
+      editorAlterado.focus();
+      editorAlterado.setSelectionRange(start, end);
+
+      // Scroll para a seleção (aproximação por linhas)
+      const textoAntes = editorAlterado.value.substring(0, start);
+      const linhaNum = textoAntes.split(/\r?\n/).length - 1;
+      const lineHeight = parseFloat(getComputedStyle(editorAlterado).lineHeight) || 18;
+      const paddingTop = parseFloat(getComputedStyle(editorAlterado).paddingTop) || 10;
+      editorAlterado.scrollTop = Math.max(0, (linhaNum * lineHeight) - (editorAlterado.clientHeight / 3) + paddingTop);
+
+      buscaInfo.textContent = (indice + 1) + ' de ' + buscaPosicoes.length;
+    }
+
+    function buscarProximo() {
+      const termo = buscaEditor.value.trim();
+      if (!termo) {
+        buscaInfo.textContent = 'Digite algo para localizar';
+        return;
+      }
+      if (termo !== buscaUltimoTermo || buscaPosicoes.length === 0) {
+        atualizarBuscaPosicoes(termo);
+        if (buscaPosicoes.length === 0) return;
+        irParaOcorrencia(0);
+        return;
+      }
+      irParaOcorrencia(buscaIndiceAtual + 1);
+    }
+
+    function buscarAnterior() {
+      const termo = buscaEditor.value.trim();
+      if (!termo) {
+        buscaInfo.textContent = 'Digite algo para localizar';
+        return;
+      }
+      if (termo !== buscaUltimoTermo || buscaPosicoes.length === 0) {
+        atualizarBuscaPosicoes(termo);
+        if (buscaPosicoes.length === 0) return;
+        irParaOcorrencia(buscaPosicoes.length - 1);
+        return;
+      }
+      irParaOcorrencia(buscaIndiceAtual - 1);
+    }
+
+    btnBuscarProx.addEventListener('click', buscarProximo);
+    btnBuscarAnt.addEventListener('click', buscarAnterior);
+
+    buscaEditor.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (e.shiftKey) buscarAnterior();
+        else buscarProximo();
+      }
+    });
+
+    // Recalcula ao editar o conteúdo (para não ficar desatualizado)
+    editorAlterado.addEventListener('input', function() {
+      if (buscaUltimoTermo) {
+        const termo = buscaEditor.value.trim();
+        if (termo) atualizarBuscaPosicoes(termo);
+      }
+    });
+
+    // ========== Ir para linha ==========
+    function irParaLinha() {
+      const num = parseInt(irLinha.value, 10);
+      const texto = editorAlterado.value;
+      if (!texto) {
+        linhaInfo.textContent = 'Arquivo vazio';
+        return;
+      }
+
+      // Conta linhas de forma consistente com o que o usuário vê
+      const linhas = texto.split(/\n/);
+      const total = linhas.length;
+
+      if (!num || num < 1) {
+        linhaInfo.textContent = 'Informe um nº válido';
+        return;
+      }
+      if (num > total) {
+        linhaInfo.textContent = 'Só há ' + total + ' linhas';
+        return;
+      }
+
+      // Calcula início e fim da linha no texto real (respeita \n e \r\n)
+      let start = 0;
+      for (let i = 0; i < num - 1; i++) {
+        start += linhas[i].length + 1; // +1 do \n que foi usado no split
+      }
+      // Remove \r residual no final da linha, se houver
+      const conteudoLinha = (linhas[num - 1] || '').replace(/\r$/, '');
+      const end = start + conteudoLinha.length;
+
+      editorAlterado.focus();
+      editorAlterado.setSelectionRange(start, end);
+
+      const lineHeight = parseFloat(getComputedStyle(editorAlterado).lineHeight) || 18;
+      const paddingTop = parseFloat(getComputedStyle(editorAlterado).paddingTop) || 10;
+      editorAlterado.scrollTop = Math.max(0, ((num - 1) * lineHeight) - (editorAlterado.clientHeight / 3) + paddingTop);
+
+      linhaInfo.textContent = 'Linha ' + num + ' de ' + total;
+    }
+
+    btnIrLinha.addEventListener('click', irParaLinha);
+    irLinha.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        irParaLinha();
+      }
+    });
+  </script>
+
+</body>
+</html>

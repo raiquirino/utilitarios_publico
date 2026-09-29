@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ferramentas Contábeis - Enumerador</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #333;
+      line-height: 1.35;
+      padding-bottom: 24px;
+    }
+
+    header {
+      background: #1e3a5f;
+      color: #fff;
+      padding: 10px 18px;
+      margin-bottom: 12px;
+    }
+    header h1 { font-size: 1.15rem; font-weight: 600; }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 14px;
+    }
+
+    main > h1 {
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+      color: #1e3a5f;
+    }
+
+    #excelInput {
+      display: block;
+      margin-bottom: 10px;
+      padding: 5px 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background: #fff;
+      width: 100%;
+      max-width: 320px;
+      font-size: 0.85rem;
+    }
+
+    .paste-zone {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 160px;
+      max-width: 280px;
+      margin-bottom: 10px;
+      padding: 8px 14px;
+      border: 1.5px dashed #b0b8c4;
+      border-radius: 6px;
+      background: #fff;
+      color: #6b7a8d;
+      font-size: 0.85rem;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+    .paste-zone:hover,
+    .paste-zone:focus {
+      border-color: #1e3a5f;
+      color: #1e3a5f;
+      background: #eef2f7;
+      outline: none;
+    }
+    .paste-zone.drag-over {
+      border-color: #1e3a5f;
+      background: #e0e8f2;
+      color: #1e3a5f;
+    }
+    .paste-zone.has-data {
+      border-style: solid;
+      border-color: #2e7d4f;
+      color: #2e7d4f;
+    }
+    .load-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 8px 12px;
+      margin-bottom: 4px;
+    }
+    .load-row #excelInput {
+      margin-bottom: 0;
+    }
+    .load-row .paste-zone {
+      margin-bottom: 0;
+    }
+
+    #sheetSelectorWrap {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    #sheetSelectorWrap.visible {
+      display: flex;
+    }
+    #sheetSelectorWrap label {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: #444;
+    }
+    #sheetSelect {
+      padding: 5px 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background: #fff;
+      font-size: 0.85rem;
+      min-width: 160px;
+      max-width: 280px;
+    }
+    #sheetSelect:focus {
+      outline: none;
+      border-color: #1e3a5f;
+      box-shadow: 0 0 0 2px rgba(30,58,95,0.12);
+    }
+
+    .horizontal-menu {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+      background: #fff;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #e0e4ea;
+      margin-bottom: 12px;
+    }
+
+    .horizontal-menu label {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: #444;
+    }
+
+    .col-input {
+      width: 36px;
+      padding: 4px 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      text-align: center;
+      font-size: 0.88rem;
+      text-transform: uppercase;
+    }
+    .col-input:focus {
+      outline: none;
+      border-color: #1e3a5f;
+      box-shadow: 0 0 0 2px rgba(30,58,95,0.12);
+    }
+
+    #btnProcess {
+      background: #1e3a5f;
+      color: #fff;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 5px;
+      font-size: 0.88rem;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    #btnProcess:hover { background: #152c4a; }
+    #btnProcess:disabled {
+      background: #8a9bb0;
+      cursor: not-allowed;
+    }
+
+    #downloadExcel {
+      color: #1e3a5f;
+      font-weight: 500;
+      text-decoration: none;
+      padding: 5px 10px;
+      border: 1px solid #1e3a5f;
+      border-radius: 5px;
+      font-size: 0.85rem;
+    }
+    #downloadExcel:hover { background: #eef2f7; }
+
+    /* Barra de progresso */
+    #progressWrap {
+      display: none;
+      margin-bottom: 10px;
+    }
+    #progressWrap.visible { display: block; }
+
+    .progress-bar-bg {
+      height: 8px;
+      background: #e0e4ea;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: #1e3a5f;
+      border-radius: 4px;
+      transition: width 0.15s ease;
+    }
+    #progressText {
+      font-size: 0.8rem;
+      color: #1e3a5f;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+
+    #previewContainer {
+      background: #fff;
+      border: 1px solid #e0e4ea;
+      border-radius: 6px;
+      padding: 10px 12px;
+      overflow-x: auto;
+    }
+    #previewContainer h2 {
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+      color: #1e3a5f;
+    }
+
+    #previewTable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    #previewTable th,
+    #previewTable td {
+      border: 1px solid #e0e4ea;
+      padding: 4px 7px;
+      text-align: left;
+      white-space: nowrap;
+    }
+    #previewTable th {
+      background: #f0f3f7;
+      font-weight: 600;
+    }
+    #previewTable tr:nth-child(even) td { background: #fafbfc; }
+
+    .col-header {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      align-items: flex-start;
+    }
+    .col-label {
+      font-weight: 700;
+      color: #1e3a5f;
+      font-size: 0.78rem;
+    }
+    .col-header select {
+      font-size: 0.72rem;
+      padding: 1px 3px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Ferramentas Contábeis</h1>
+  </header>
+
+  <main>
+    <h1>Enumerador de informações</h1>
+
+    <div class="load-row">
+      <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" />
+      <div class="paste-zone" id="pasteZone" tabindex="0" title="Clique e cole (Ctrl+V) ou arraste um arquivo">
+        Cole aqui (Ctrl+V)
+      </div>
+    </div>
+
+    <div id="sheetSelectorWrap">
+      <label for="sheetSelect">Aba:</label>
+      <select id="sheetSelect"></select>
+    </div>
+
+    <div id="columnSelectors" class="horizontal-menu">
+      <label>Coluna 1:</label>
+      <input id="col1" maxlength="1" class="col-input" />
+
+      <label>Coluna 2:</label>
+      <input id="col2" maxlength="1" class="col-input" />
+
+      <label>Salvar em:</label>
+      <input id="destCol" maxlength="1" class="col-input" />
+
+      <button id="btnProcess">Processar</button>
+      <a id="downloadExcel" style="display:none;">Baixar Planilha</a>
+    </div>
+
+    <div id="progressWrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+      <div id="progressText"></div>
+    </div>
+
+    <div id="previewContainer">
+      <h2>Pré-visualização</h2>
+      <table id="previewTable"></table>
+    </div>
+  </main>
+
+  <script>
+    let sheetData = [];
+    let columnFormats = {};
+    let generatedNames = new Set();
+    let file = null;
+    let workbook = null;
+
+    const progressWrap = document.getElementById("progressWrap");
+    const progressBar = document.getElementById("progressBar");
+    const progressText = document.getElementById("progressText");
+    const btnProcess = document.getElementById("btnProcess");
+    const sheetSelectorWrap = document.getElementById("sheetSelectorWrap");
+    const sheetSelect = document.getElementById("sheetSelect");
+    const pasteZone = document.getElementById("pasteZone");
+
+    function showProgress(pct, text) {
+      progressWrap.classList.add("visible");
+      progressBar.style.width = Math.min(100, Math.max(0, pct)) + "%";
+      progressText.textContent = text || "";
+    }
+
+    function hideProgress() {
+      progressWrap.classList.remove("visible");
+      progressBar.style.width = "0%";
+      progressText.textContent = "";
+    }
+
+    function loadSheet(sheetName) {
+      if (!workbook || !sheetName) return;
+      columnFormats = {};
+      const sheet = workbook.Sheets[sheetName];
+      sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      showPreview(sheetData);
+      document.getElementById("downloadExcel").style.display = "none";
+    }
+
+    function populateSheetSelect(names) {
+      sheetSelect.innerHTML = "";
+      names.forEach((name) => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        sheetSelect.appendChild(opt);
+      });
+      sheetSelectorWrap.classList.add("visible");
+    }
+
+    // 🔹 Parse texto colado do Excel (TSV / CSV) → array de arrays
+    function parsePastedText(text) {
+      text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+      if (!text) return null;
+
+      const lines = text.split("\n").filter((l) => l.trim() !== "");
+      if (!lines.length) return null;
+
+      const first = lines[0];
+      let delim = "\t";
+      if (!first.includes("\t")) {
+        const semi = (first.match(/;/g) || []).length;
+        const comma = (first.match(/,/g) || []).length;
+        delim = semi > comma ? ";" : ",";
+      }
+
+      function splitLine(line) {
+        if (delim === "\t") return line.split("\t");
+        const cells = [];
+        let cur = "";
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              cur += '"';
+              i++;
+            } else inQuotes = !inQuotes;
+          } else if (ch === delim && !inQuotes) {
+            cells.push(cur);
+            cur = "";
+          } else {
+            cur += ch;
+          }
+        }
+        cells.push(cur);
+        return cells;
+      }
+
+      const rows = lines.map(splitLine);
+      const maxCols = Math.max(...rows.map((r) => r.length));
+      if (maxCols === 0) return null;
+
+      rows.forEach((r) => {
+        while (r.length < maxCols) r.push("");
+      });
+
+      return rows.map((r) => r.map((c) => (c != null ? String(c).trim() : "")));
+    }
+
+    function applyPastedData(rows) {
+      columnFormats = {};
+      workbook = null;
+      sheetSelectorWrap.classList.remove("visible");
+      sheetData = rows;
+      file = { name: "dados_colados.xlsx" };
+      showPreview(sheetData);
+      document.getElementById("downloadExcel").style.display = "none";
+      pasteZone.classList.add("has-data");
+      pasteZone.textContent = rows.length + " linhas";
+      showProgress(100, "✅ Dados colados: " + rows.length.toLocaleString("pt-BR") + " linhas");
+      setTimeout(hideProgress, 1800);
+    }
+
+    function handlePasteText(text) {
+      const rows = parsePastedText(text);
+      if (!rows || !rows.length) {
+        showProgress(0, "❌ Nada para processar. Cole células do Excel (Ctrl+C → Ctrl+V).");
+        setTimeout(hideProgress, 2500);
+        return;
+      }
+      applyPastedData(rows);
+    }
+
+    // Zona de colar
+    pasteZone.addEventListener("click", () => pasteZone.focus());
+
+    pasteZone.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const text = e.clipboardData && e.clipboardData.getData("text/plain");
+      if (text) handlePasteText(text);
+    });
+
+    document.addEventListener("paste", (e) => {
+      if (document.activeElement === pasteZone) return;
+      const tag = document.activeElement && document.activeElement.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      const text = e.clipboardData && e.clipboardData.getData("text/plain");
+      if (!text || !text.trim()) return;
+      if (!text.includes("\t") && text.split(/\r?\n/).filter((l) => l.trim()).length < 2) return;
+
+      e.preventDefault();
+      handlePasteText(text);
+    });
+
+    pasteZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      pasteZone.classList.add("drag-over");
+    });
+    pasteZone.addEventListener("dragleave", () => pasteZone.classList.remove("drag-over"));
+    pasteZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      pasteZone.classList.remove("drag-over");
+
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (files && files.length > 0) {
+        const f = files[0];
+        const name = (f.name || "").toLowerCase();
+        if (name.endsWith(".xlsx") || name.endsWith(".xls") || name.endsWith(".csv")) {
+          // Reutiliza o input de arquivo
+          const dt = new DataTransfer();
+          dt.items.add(f);
+          document.getElementById("excelInput").files = dt.files;
+          document.getElementById("excelInput").dispatchEvent(new Event("change"));
+          return;
+        }
+      }
+
+      const text = e.dataTransfer && e.dataTransfer.getData("text/plain");
+      if (text) handlePasteText(text);
+    });
+
+    // 🔹 Carregar arquivo
+    document.getElementById("excelInput").addEventListener("change", (e) => {
+      file = e.target.files[0];
+      if (!file) return;
+
+      showProgress(10, "⏳ Lendo arquivo...");
+      btnProcess.disabled = true;
+      sheetSelectorWrap.classList.remove("visible");
+      workbook = null;
+      sheetData = [];
+
+      const reader = new FileReader();
+
+      reader.onload = (evt) => {
+        try {
+          showProgress(40, "⏳ Processando planilha...");
+          const data = new Uint8Array(evt.target.result);
+          workbook = XLSX.read(data, { type: "array" });
+          const sheetNames = workbook.SheetNames;
+
+          if (!sheetNames.length) {
+            throw new Error("Nenhuma aba encontrada no arquivo.");
+          }
+
+          populateSheetSelect(sheetNames);
+          loadSheet(sheetNames[0]);
+
+          pasteZone.classList.add("has-data");
+          pasteZone.textContent = sheetData.length + " linhas";
+          showProgress(100, `✅ Arquivo carregado: ${sheetData.length} linhas (${sheetNames.length} aba${sheetNames.length > 1 ? "s" : ""})`);
+          setTimeout(hideProgress, 1800);
+        } catch (err) {
+          console.error(err);
+          showProgress(0, "❌ Erro ao ler o arquivo. Verifique se é um .xlsx válido.");
+          alert("Erro ao abrir o arquivo: " + err.message);
+        }
+        btnProcess.disabled = false;
+      };
+
+      reader.onerror = () => {
+        showProgress(0, "❌ Erro ao ler o arquivo.");
+        btnProcess.disabled = false;
+      };
+
+      reader.readAsArrayBuffer(file);
+    });
+
+    // 🔹 Trocar de aba
+    sheetSelect.addEventListener("change", () => {
+      const name = sheetSelect.value;
+      if (!name || !workbook) return;
+      showProgress(30, "⏳ Carregando aba...");
+      loadSheet(name);
+      pasteZone.classList.add("has-data");
+      pasteZone.textContent = sheetData.length + " linhas";
+      showProgress(100, `✅ Aba "${name}" carregada: ${sheetData.length} linhas`);
+      setTimeout(hideProgress, 1500);
+    });
+
+    function colLetterToIndex(letter) {
+      return letter.toUpperCase().charCodeAt(0) - 65;
+    }
+
+    function formatValue(value, type) {
+      if (type === "date") {
+        if (value instanceof Date) return value.toLocaleDateString("pt-BR");
+        if (typeof value === "number") {
+          const date = XLSX.SSF?.parse_date_code?.(value);
+          if (date) {
+            return `${String(date.d).padStart(2,"0")}/${String(date.m).padStart(2,"0")}/${date.y}`;
+          }
+        }
+        return value;
+      }
+      if (type === "currency") {
+        const num = parseFloat(value?.toString().replace(",", "."));
+        if (!isNaN(num)) {
+          return num.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        return value;
+      }
+      return value ?? "";
+    }
+
+    function showPreview(data) {
+      const table = document.getElementById("previewTable");
+      table.innerHTML = "";
+
+      let colCount = 0;
+      for (let r = 0; r < data.length; r++) {
+        if (data[r] && data[r].length > colCount) colCount = data[r].length;
+      }
+
+      const headerRow = document.createElement("tr");
+      for (let i = 0; i < colCount; i++) {
+        const th = document.createElement("th");
+        const wrapper = document.createElement("div");
+        wrapper.className = "col-header";
+
+        const label = document.createElement("span");
+        label.className = "col-label";
+        label.textContent = String.fromCharCode(65 + i);
+
+        const select = document.createElement("select");
+        select.innerHTML = `
+          <option value="auto">Auto</option>
+          <option value="text">Texto</option>
+          <option value="date">Data</option>
+          <option value="currency">Valor</option>
+        `;
+        select.dataset.col = i;
+        select.value = columnFormats[i] || "auto";
+        select.addEventListener("change", () => {
+          columnFormats[i] = select.value;
+          showPreview(sheetData);
+        });
+
+        wrapper.appendChild(label);
+        wrapper.appendChild(select);
+        th.appendChild(wrapper);
+        headerRow.appendChild(th);
+      }
+      table.appendChild(headerRow);
+
+      const maxRows = Math.min(data.length, 30);
+      for (let i = 0; i < maxRows; i++) {
+        const row = document.createElement("tr");
+        for (let j = 0; j < colCount; j++) {
+          const cell = document.createElement("td");
+          const raw = data[i]?.[j];
+          const type = columnFormats[j] || "auto";
+          cell.textContent = (type === "auto" ? raw : formatValue(raw, type)) ?? "";
+          row.appendChild(cell);
+        }
+        table.appendChild(row);
+      }
+      document.getElementById("previewContainer").style.display = "block";
+    }
+
+    // 🔹 Processar
+    document.getElementById("btnProcess").addEventListener("click", () => {
+      const col1 = document.getElementById("col1").value.trim();
+      const col2 = document.getElementById("col2").value.trim();
+      const dest = document.getElementById("destCol").value.trim();
+      const link = document.getElementById("downloadExcel");
+
+      if (!col1 || !col2 || !dest) {
+        alert("Preencha todas as colunas.");
+        return;
+      }
+      if (!sheetData.length) {
+        alert("Carregue um arquivo primeiro.");
+        return;
+      }
+
+      btnProcess.disabled = true;
+      showProgress(5, "⏳ Iniciando processamento...");
+
+      const col1Index = colLetterToIndex(col1);
+      const col2Index = colLetterToIndex(col2);
+      const destIndex = colLetterToIndex(dest);
+      const contador = {};
+      const resultado = [];
+      const total = sheetData.length;
+
+      // Processa em blocos para não travar a tela e atualizar a barra
+      let i = 0;
+      const chunkSize = 500;
+
+      function processChunk() {
+        const end = Math.min(i + chunkSize, total);
+
+        for (; i < end; i++) {
+          const row = sheetData[i];
+          const novaLinha = row.map((value, j) =>
+            columnFormats[j] === "auto" ? value : formatValue(value, columnFormats[j])
+          );
+
+          if (i === 0) {
+            novaLinha[destIndex] = "Repetição";
+          } else {
+            const val1 = row[col1Index];
+            const val2 = row[col2Index];
+            if (val1 !== undefined && val1 !== "" && val2 !== undefined && val2 !== "") {
+              const f1 = formatValue(val1, columnFormats[col1Index] || "auto");
+              const f2 = formatValue(val2, columnFormats[col2Index] || "auto");
+              const chave = `${f1}||${f2}`;
+              contador[chave] = (contador[chave] || 0) + 1;
+              novaLinha[destIndex] = contador[chave];
+            } else {
+              novaLinha[destIndex] = "";
+            }
+          }
+          resultado.push(novaLinha);
+        }
+
+        const pct = Math.round((i / total) * 85);
+        showProgress(pct, `⏳ Processando... ${i.toLocaleString("pt-BR")} / ${total.toLocaleString("pt-BR")} linhas`);
+
+        if (i < total) {
+          setTimeout(processChunk, 0);
+        } else {
+          // Finaliza
+          showProgress(90, "⏳ Gerando arquivo...");
+          showPreview(resultado);
+
+          const worksheet = XLSX.utils.aoa_to_sheet(resultado);
+          const workbookOut = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbookOut, worksheet, "Repetições");
+          const wbout = XLSX.write(workbookOut, { bookType: "xlsx", type: "array" });
+          const blob = new Blob([wbout], { type: "application/octet-stream" });
+          const url = URL.createObjectURL(blob);
+
+          const originalName = file ? file.name.replace(/\.xlsx$/i, "") : "Arquivo";
+          let finalName = `${originalName} Enumerado.xlsx`;
+          let index = 2;
+          while (generatedNames.has(finalName)) {
+            finalName = `${originalName} Enumerado (${index}).xlsx`;
+            index++;
+          }
+          generatedNames.add(finalName);
+
+          link.href = url;
+          link.download = finalName;
+          link.style.display = "inline";
+
+          showProgress(100, "✅ Planilha processada com sucesso!");
+          btnProcess.disabled = false;
+          setTimeout(hideProgress, 2500);
+        }
+      }
+
+      processChunk();
+    });
+  </script>
+</body>
+</html>

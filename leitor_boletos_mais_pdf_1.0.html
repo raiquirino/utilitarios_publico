@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leitor de Boletos e Comprovantes</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1419;
+            color: #e7e9ea;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 16px 24px;
+        }
+
+        /* ===== TOPO FIXO ===== */
+        .sticky-top {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #0f1419;
+            padding-top: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #2f3336;
+            margin-bottom: 12px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        header h1 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #1d9bf0;
+            margin-bottom: 2px;
+        }
+
+        header p {
+            color: #8b98a5;
+            font-size: 0.8rem;
+        }
+
+        /* Área de seleção (linha separada, largura total, altura dobrada) */
+        .drop-zone {
+            border: 2px dashed #38444d;
+            border-radius: 10px;
+            padding: 18px 16px;
+            min-height: 64px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            background: #16202a;
+            margin-bottom: 8px;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: #1d9bf0;
+            background: rgba(29, 155, 240, 0.06);
+        }
+
+        .drop-zone .icon { font-size: 1.5rem; display: block; }
+        .drop-zone h3 { color: #1d9bf0; font-size: 0.95rem; margin: 0; font-weight: 600; }
+        .drop-zone p { color: #8b98a5; font-size: 0.8rem; margin: 0; }
+
+        #fileInput { display: none; }
+
+        /* Barra horizontal de processar */
+        .process-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: #16202a;
+            border: 1px solid #2f3336;
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-bottom: 10px;
+        }
+
+        .process-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .summary-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: #1a2332;
+            border: 1px solid #2f3336;
+        }
+        .summary-badge .num { font-size: 0.95rem; }
+        .summary-badge.pending { border-color: #ffc107; color: #ffc107; }
+        .summary-badge.processing { border-color: #1d9bf0; color: #1d9bf0; }
+        .summary-badge.done { border-color: #00ba7c; color: #00ba7c; }
+        .summary-badge.error { border-color: #f4212e; color: #f4212e; }
+        .summary-badge.total { color: #8b98a5; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.15s;
+            white-space: nowrap;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn:active { transform: scale(0.98); }
+
+        .btn-primary {
+            background: #1d9bf0;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .btn-secondary {
+            background: #2f3336;
+            color: #e7e9ea;
+            border: 1px solid #38444d;
+            padding: 7px 12px;
+            font-size: 0.8rem;
+        }
+
+        .progress-wrap {
+            flex-basis: 100%;
+            width: 100%;
+            display: none;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #2f3336;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            background: #1d9bf0;
+            border-radius: 2px;
+            transition: width 0.25s;
+        }
+        .loading-text {
+            font-size: 0.75rem;
+            color: #1d9bf0;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .report-header h2 {
+            font-size: 1.05rem;
+            color: #e7e9ea;
+        }
+        .report-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .top-actions {
+            justify-content: flex-end;
+            margin-bottom: 8px;
+        }
+
+        /* Área de buscas */
+        .search-area {
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 0;
+        }
+        .search-area.show { display: flex; }
+
+        .search-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-row input {
+            padding: 7px 10px;
+            border: 1px solid #38444d;
+            border-radius: 8px;
+            background: #0f1419;
+            color: #e7e9ea;
+            font-size: 0.85rem;
+            min-width: 0;
+        }
+        .search-row input:focus {
+            outline: none;
+            border-color: #1d9bf0;
+        }
+        .search-row input::placeholder { color: #8b98a5; }
+
+        .search-data { width: 130px; }
+        .search-texto { flex: 1; min-width: 160px; }
+        .search-valor { width: 120px; }
+
+        .search-count {
+            font-size: 0.8rem;
+            color: #8b98a5;
+            white-space: nowrap;
+            margin-left: auto;
+        }
+
+        .panel-report {
+            background: #16202a;
+            border: 1px solid #2f3336;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        @media (max-width: 700px) {
+            header h1 { font-size: 1.15rem; }
+            header p { font-size: 0.75rem; }
+            .process-bar { padding: 8px 10px; gap: 8px; }
+            .drop-zone { padding: 14px 12px; min-height: 56px; }
+            .drop-zone h3 { font-size: 0.85rem; }
+            .btn { padding: 7px 12px; font-size: 0.8rem; }
+            th, td { padding: 8px 8px; font-size: 0.8rem; }
+            .report-header h2 { font-size: 0.95rem; }
+            .container { padding: 0 8px 16px; }
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #2f3336;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        thead { background: #1a2332; }
+        th {
+            padding: 10px 12px;
+            text-align: left;
+            color: #8b98a5;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+        td {
+            padding: 10px 12px;
+            border-top: 1px solid #2f3336;
+            vertical-align: top;
+        }
+        tbody tr:hover { background: rgba(29, 155, 240, 0.04); }
+        tbody tr { cursor: default; user-select: none; }
+        tbody tr.marcada {
+            background: rgba(29, 155, 240, 0.18) !important;
+            outline: 1px solid #1d9bf0;
+        }
+        tbody tr.marcada:hover {
+            background: rgba(29, 155, 240, 0.22) !important;
+        }
+        tbody td { cursor: pointer; }
+        .valor { color: #00ba7c; font-weight: 600; white-space: nowrap; }
+        .mono {
+            font-family: ui-monospace, monospace;
+            font-size: 0.78rem;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .td-pdf {
+            text-align: center;
+            width: 44px;
+            padding: 6px 4px !important;
+        }
+        .btn-pdf {
+            background: transparent;
+            border: 1px solid #38444d;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.15rem;
+            padding: 2px 6px;
+            line-height: 1;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .btn-pdf:hover {
+            border-color: #1d9bf0;
+            background: rgba(29, 155, 240, 0.12);
+        }
+        .btn-pdf-disabled {
+            color: #38444d;
+            font-size: 0.9rem;
+            user-select: none;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 48px 16px;
+            color: #8b98a5;
+        }
+        .empty .icon { font-size: 2.5rem; opacity: 0.4; margin-bottom: 8px; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 500;
+            font-size: 0.9rem;
+            z-index: 999;
+            transform: translateX(120%);
+            transition: transform 0.25s;
+            max-width: 320px;
+        }
+        .toast.show { transform: translateX(0); }
+        .toast.success { background: #00ba7c; }
+        .toast.error { background: #f4212e; }
+        .toast.info { background: #1d9bf0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- TOPO FIXO: título + processar + cabeçalho relatório + buscas -->
+        <div class="sticky-top">
+            <header>
+                <h1>Leitor de Boletos e Comprovantes</h1>
+                <p>Boletos e comprovantes PIX/transferência (Itaú, Nubank, BB, Bradesco, Caixa, Sicredi e outros)</p>
+            </header>
+
+            <div class="report-actions top-actions">
+                <button class="btn btn-secondary" onclick="exportDados()">Exportar Dados</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('importInput').click()">Importar Dados</button>
+                <input type="file" id="importInput" accept=".json,application/json" style="display:none" onchange="importDados(event)">
+                <button class="btn btn-secondary" onclick="exportCSV()">CSV</button>
+                <button class="btn btn-secondary" onclick="exportExcel()">Excel</button>
+                <button class="btn btn-secondary" onclick="clearAll()">Limpar</button>
+            </div>
+
+            <div class="drop-zone" id="dropZone">
+                <span class="icon">📥</span>
+                <div>
+                    <h3>Arraste os PDFs aqui</h3>
+                    <p>ou clique para selecionar</p>
+                </div>
+                <input type="file" id="fileInput" accept=".pdf" multiple>
+            </div>
+
+            <div class="process-bar">
+                <button class="btn btn-primary" id="btnProcess" onclick="processFiles()">Processar</button>
+                <div class="process-actions">
+                    <div id="fileListContent" class="file-summary">
+                        <span style="color:#8b98a5;font-size:0.8rem;">Nenhum arquivo</span>
+                    </div>
+                </div>
+                <div class="progress-wrap" id="progressWrap">
+                    <div class="progress-bar" id="progressBar">
+                        <div class="fill" id="progressFill" style="width:0%"></div>
+                    </div>
+                    <div class="loading-text" id="loadingText">Processando...</div>
+                </div>
+            </div>
+
+            <div class="report-header">
+                <h2>Relatório</h2>
+            </div>
+
+            <div class="search-area" id="searchArea">
+                <div class="search-row">
+                    <input type="text" id="searchData" class="search-data" placeholder="Data (ex: 10/04 ou 1004)" oninput="filtrarTabela()">
+                    <input type="text" id="searchTexto" class="search-texto" placeholder="Texto (arquivo, beneficiário, identificação)" oninput="filtrarTabela()">
+                    <input type="text" id="searchValor" class="search-valor" placeholder="Valor (ex: 23001,00)" oninput="filtrarTabela()">
+                    <span class="search-count" id="searchCount"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel-report">
+            <div id="reportContent">
+                <div class="empty">
+                    <div class="icon">📋</div>
+                    <p>Nenhum documento processado.</p>
+                    <p style="font-size:0.85rem;margin-top:4px;">Arraste PDFs e clique em Processar.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Configura o worker do PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // ===================== ESTADO =====================
+        let files = [];
+        let boletos = [];
+        const linhasMarcadas = new Set();
+
+        // ===================== CONSTANTES =====================
+        const CABECALHOS_RECEBEDOR = [
+            'dados de quem está recebendo', 'dados do recebedor', 'dados do beneficiário',
+            'dados do beneficiario', 'dados do favorecido', 'dados do destinatário',
+            'dados do destinatario', 'dados do pagamento', 'recebedor',
+            'favorecido', 'destinatário', 'destinatario', 'cedente', 'fatura detalhada', 'nome do funcionário'
+        ];
+
+        const CABECALHOS_PAGADOR = [
+            'dados de quem está pagando', 'dados do pagador', 'dados do sacado',
+            'dados da conta debitada', 'conta debitada', 'pagador', 'sacado'
+        ];
+
+        const LABELS_NOME = [
+            'nome da concessionária', 'nome da concessionaria', 'nome do recebedor',
+            'nome do beneficiário', 'nome do beneficiario', 'nome do favorecido',
+            'nome do destinatário', 'nome do destinatario', 'concessionária',
+            'concessionaria', 'nome',
+        ];
+
+        const LABELS_DATA = [
+            'data de vencimento', 'data do vencimento', 'vencimento',
+            'data da transferência', 'data da transferencia', 'data do pagamento',
+            'data de pagamento', 'data do documento', 'data doc',
+            'transferência efetuada em', 'transferencia efetuada em',
+            'transação efetuada em', 'transacao efetuada em', 'efetuada em',
+            'data da transação', 'data da transacao'
+        ];
+
+        const LABELS_VALOR = [
+            'valor total a pagar', 'valor do documento', 'valor documento',
+            '(=) valor documento', '(=)valor documento', 'valor do pagamento',
+            'valor da transferência', 'valor da transferencia', 'valor a pagar',
+            'valor do título', 'valor do titulo', 'valor cobrado',
+            '(=) valor cobrado', 'valor'
+        ];
+
+        const LABELS_IDENTIFICACAO = [
+            'identificação no comprovante', 'identificacao no comprovante',
+            'identificação no extrato', 'identificacao no extrato',
+            'mensagem ao recebedor', 'descrição', 'descricao',
+            'observação', 'observacao', 'id da transação', 'id da transacao',
+            'tipo de pagamento', 'número do contrato', 'numero do contrato',
+            'nosso número', 'nosso numero', 'número do documento', 'numero do documento',
+            'nº do documento', 'no documento'
+        ];
+
+        const CORTES_SECAO = [
+            ...CABECALHOS_PAGADOR,
+            'dados da transação', 'dados da transacao', 'dados de controle',
+            'autenticação no comprovante', 'autenticacao no comprovante',
+            'autenticação', 'autenticacao', 'id da transação', 'id da transacao',
+            'transação efetuada', 'transacao efetuada', 'efetuada em',
+            'local de pagamento', 'instruções', 'instrucoes', 'ficha de compensação'
+        ];
+
+        // ===================== UTILITÁRIOS =====================
+        function esc(t) {
+            const d = document.createElement('div');
+            d.textContent = t || '';
+            return d.innerHTML;
+        }
+
+        function escapeRegex(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function showToast(msg, type = 'info') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = `toast ${type} show`;
+            setTimeout(() => t.classList.remove('show'), 3200);
+        }
+
+        function limparNome(s) {
+            return s
+                .replace(/\s{2,}/g, ' ')
+                .replace(/[\t\r]/g, '')
+                .replace(/\s*[-–—]\s*(CPF|CNPJ)\s*[:.]?\s*[\d.\/\-]+/i, '')
+                .replace(/\s*(CPF|CNPJ|Agência|Agencia|Chave|Instituição|Instituicao|Tipo de|Agência\/Código|Agencia\/Codigo).*/i, '')
+                .replace(/\s*[-–—]\s*$/, '')
+                .trim();
+        }
+
+        function isLixo(s) {
+            const low = s.toLowerCase().trim();
+            return /^(cpf|cnpj|ag[eê]ncia|conta|chave|valor|data|tipo|pix|institui|nome|espécie|especie|carteira|quantidade|nosso|local|pagável|pagavel|recibo|ficha)/.test(low)
+                || /^\d[\d.\-\/]*$/.test(s)
+                || low.length < 3;
+        }
+
+        function parseValorBr(s) {
+            return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+        }
+
+        function formatarData(d) {
+            const parts = d.replace(/[.\-]/g, '/').split('/');
+            if (parts.length !== 3) return d;
+            let [dia, mes, ano] = parts;
+            dia = dia.padStart(2, '0');
+            mes = mes.padStart(2, '0');
+            if (ano.length === 2) ano = '20' + ano;
+            return `${dia}/${mes}/${ano}`;
+        }
+
+        // Limpa nome do arquivo para cópia (maiúsculo + sem acentos/especiais)
+        function limparArquivoParaCopia(nome) {
+            if (!nome) return '';
+            return nome
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-zA-Z0-9\s\.\-_]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toUpperCase();
+        }
+
+        // ===================== EXTRAÇÃO DE TEXTO =====================
+        async function extractText(file) {
+            const buf = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+            let full = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const tc = await page.getTextContent();
+                // Ordena por posição visual (Y decrescente = topo→base, depois X)
+                // para preservar a leitura de boletos em colunas
+                const items = (tc.items || []).slice().sort((a, b) => {
+                    const yA = a.transform ? a.transform[5] : 0;
+                    const yB = b.transform ? b.transform[5] : 0;
+                    if (Math.abs(yA - yB) > 2.5) return yB - yA;
+                    const xA = a.transform ? a.transform[4] : 0;
+                    const xB = b.transform ? b.transform[4] : 0;
+                    return xA - xB;
+                });
+                let line = '';
+                let lastY = null;
+                for (const it of items) {
+                    const y = it.transform ? it.transform[5] : 0;
+                    const str = it.str || '';
+                    if (lastY !== null && Math.abs(y - lastY) > 3.5) {
+                        full += line.replace(/\s+/g, ' ').trim() + '\n';
+                        line = '';
+                    }
+                    line += str + (it.hasEOL ? '\n' : ' ');
+                    lastY = y;
+                }
+                if (line.trim()) full += line.replace(/\s+/g, ' ').trim() + '\n';
+            }
+            return full;
+        }
+
+        // ===================== PARSE =====================
+        function extrairSecaoRecebedor(clean) {
+            const lower = clean.toLowerCase();
+            for (const cab of CABECALHOS_RECEBEDOR) {
+                const idx = lower.indexOf(cab);
+                if (idx === -1) continue;
+                let inicio = idx + cab.length;
+                let fim = clean.length;
+                for (const c of CORTES_SECAO) {
+                    const i = lower.indexOf(c, inicio);
+                    if (i !== -1 && i < fim) fim = i;
+                }
+                const secao = clean.substring(inicio, fim).trim();
+                if (secao.length > 5) return secao;
+            }
+            return clean;
+        }
+
+        function removerSecaoPagador(clean) {
+            const lower = clean.toLowerCase();
+            for (const cab of CABECALHOS_PAGADOR) {
+                const idx = lower.indexOf(cab);
+                if (idx === -1) continue;
+                let fim = clean.length;
+                const limites = [...CABECALHOS_RECEBEDOR, 'dados da transação', 'dados da transacao', 'dados do pagamento'];
+                for (const l of limites) {
+                    const i = lower.indexOf(l, idx + cab.length);
+                    if (i !== -1 && i < fim) fim = i;
+                }
+                return clean.substring(0, idx) + ' ' + clean.substring(fim);
+            }
+            return clean;
+        }
+
+        function extractBeneficiario(secao, clean) {
+            const semPagador = removerSecaoPagador(clean);
+            const fontes = [semPagador, secao, clean];
+
+            // 1) Boleto: "Beneficiário" seguido de cabeçalhos de coluna, depois o NOME da empresa
+            // Ex: Beneficiário Agência / Código ... SAMEDIL SERVICOS - 31.466.949/0001-05
+            for (const src of fontes) {
+                const reBoletoHdr = /benefici[aá]rio(?:\s+final)?(?:\s+(?:ag[eê]ncia|c[oó]digo|esp[eé]cie|quantidade|carteira|nosso|n[uú]mero|\/|\-|de|do|da|e)){0,20}\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-Za-zÁÉÍÓÚÂÊÔÃÕÇàáâãéêíóôõúüç0-9\s&.,]{2,80}?)(?:\s*[-–—]\s*)?(?:\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}|cnpj|cpf)/i;
+                const m = src.match(reBoletoHdr);
+                if (m && m[1]) {
+                    let nome = limparNome(m[1]);
+                    // remove residual headers that may have been captured
+                    nome = nome
+                        .replace(/^(ag[eê]ncia|c[oó]digo|esp[eé]cie|quantidade|carteira|nosso|n[uú]mero|do\s+benefici[aá]rio)[\s\/\-]*/gi, '')
+                        .replace(/\s+(ag[eê]ncia|c[oó]digo|esp[eé]cie|quantidade|carteira|nosso).*/i, '')
+                        .trim();
+                    if (nome.length >= 3 && !isLixo(nome)) return nome.substring(0, 100);
+                }
+            }
+
+            // 2) Boleto simples: Beneficiário NOME - CNPJ (sem headers no meio)
+            for (const src of fontes) {
+                const reBoleto = /benefici[aá]rio(?:\s+final)?\s*[:\-]?\s*([A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-Za-zÁÉÍÓÚÂÊÔÃÕÇàáâãéêíóôõúüç0-9\s&.,\-\/']{2,100}?)(?=\s*(?:[-–—]\s*)?(?:cnpj|cpf|ag[eê]ncia|c[oó]digo|esp[eé]cie|quantidade|carteira|nosso|data|n[uú]mero|vencimento|valor|local|instru|pagador|$))/i;
+                const m = src.match(reBoleto);
+                if (m && m[1]) {
+                    let nome = limparNome(m[1]);
+                    nome = nome.replace(/\s*[-–—]?\s*\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\s*$/, '').trim();
+                    if (nome.length >= 3 && !isLixo(nome) && !/^(ag[eê]ncia|c[oó]digo|esp[eé]cie)/i.test(nome)) {
+                        return nome.substring(0, 100);
+                    }
+                }
+            }
+
+            // 3) Labels específicos de comprovantes PIX / transferência
+            const labelsEspecificos = LABELS_NOME.filter(l => l !== 'nome');
+            for (const label of labelsEspecificos) {
+                const re = new RegExp(
+                    escapeRegex(label) +
+                    '\\s*[:\\-]?\\s*([A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-Za-zÁÉÍÓÚÂÊÔÃÕÇàáâãéêíóôõúüç\\s&.,\\d\\-\\/\\\']{2,90}?)' +
+                    '(?=\\s*(?:chave|cpf|cnpj|institui|ag[eê]ncia|tipo|dados|valor|data|autentica|c[oó]digo|transa|$))',
+                    'i'
+                );
+                for (const src of fontes) {
+                    const m = src.match(re);
+                    if (m && m[1]) {
+                        const nome = limparNome(m[1]);
+                        if (nome.length >= 3 && !isLixo(nome)) return nome.substring(0, 90);
+                    }
+                }
+            }
+
+            // 4) "Nome: XXX"
+            for (const src of fontes) {
+                const reNome = /nome\s*[:\-]?\s*([A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-Za-zÁÉÍÓÚÂÊÔÃÕÇàáâãéêíóôõúüç\s&.,\d\-\/']{2,90}?)(?=\s*(?:chave|cpf|cnpj|institui|ag[eê]ncia|tipo|dados|valor|data|autentica|$))/i;
+                const mNome = src.match(reNome);
+                if (mNome && mNome[1]) {
+                    const nome = limparNome(mNome[1]);
+                    if (nome.length >= 3 && !isLixo(nome)) return nome.substring(0, 90);
+                }
+            }
+
+            // 5) Empresa no topo (fatura detalhada)
+            const reTopo = /(?:fatura\s+detalhada|recibo\s+do\s+pagador)\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-ZÁÉÍÓÚÂÊÔÃÕÇàáâãéêíóôõúüç0-9\s&.,\-\/']{4,80}?)(?=\s*(?:cpf|cnpj|fone|telefone|q\s|destinat|emiss[aã]o|n[uú]mero|$))/i;
+            const mTopo = clean.match(reTopo);
+            if (mTopo && mTopo[1]) {
+                const nome = limparNome(mTopo[1]);
+                if (nome.length >= 5 && !isLixo(nome) && /ltda|s\.?a\.?|me|epp|eireli|servicos|serviços|infra|saude|saúde|banco|financeira/i.test(nome)) {
+                    return nome.substring(0, 100);
+                }
+            }
+
+            // 6) Empresa + CNPJ em qualquer lugar (padrão comum)
+            const reEmpCnpj = /([A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-Za-zÁÉÍÓÚÂÊÔÃÕÇàáâãéêíóôõúüç0-9\s&.,]{4,70}?)\s*[-–—]?\s*(?:CNPJ\s*[:.]?\s*)?\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/;
+            const allEmp = [...clean.matchAll(new RegExp(reEmpCnpj, 'g'))];
+            let candidatoEmpresa = null;
+            for (const m of allEmp) {
+                let nome = limparNome(m[1]);
+                nome = nome.replace(/^(benefici[aá]rio|pagador|sacado|destinat[aá]rio|cedente)\s*/i, '').trim();
+                if (nome.length >= 5 && !isLixo(nome) && /[A-Za-zÁÉÍÓÚ]{3,}/.test(nome)) {
+                    const idx = m.index || 0;
+                    const ctxAntes = clean.substring(Math.max(0, idx - 70), idx).toLowerCase();
+                    const ctxDepois = clean.substring(idx, Math.min(clean.length, idx + 40)).toLowerCase();
+                    // Rejeitar se claramente na seção do pagador/sacado
+                    if (/pagador|sacado|conta\s+debitada|quem\s+est[aá]\s+pagando/.test(ctxAntes) &&
+                        !/benefici|cedente|recebedor|favorecido/.test(ctxAntes)) {
+                        continue;
+                    }
+                    if (/benefici|cedente|recebedor|favorecido|destinat/.test(ctxAntes)) {
+                        return nome.substring(0, 100);
+                    }
+                    if (/ltda|s\.?a\.?|me\b|epp|eireli|servicos|serviços|infra|saude|saúde|banco|financeira/i.test(nome)) {
+                        if (!candidatoEmpresa) candidatoEmpresa = nome.substring(0, 100);
+                    }
+                }
+            }
+            if (candidatoEmpresa) return candidatoEmpresa;
+
+            // 7) Bloco genérico na seção do recebedor
+            const bloco = secao.match(/([A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-Za-zÁÉÍÓÚÂÊÔÃÕÇàáâãéêíóôõúüç\s&.,\d\-\/']{4,90}?)(?=\s*(?:chave|cpf|cnpj|institui|ag[eê]ncia|tipo|dados|valor|data|c[oó]digo|$))/i);
+            if (bloco && bloco[1]) {
+                const nome = limparNome(bloco[1]);
+                if (nome.length >= 3 && !isLixo(nome) && !/^(concession[aá]ria|c[oó]digo|tipo)/i.test(nome)) {
+                    return nome.substring(0, 90);
+                }
+            }
+
+            return 'Não identificado';
+        }
+
+        function extractData(clean) {
+            const lower = clean.toLowerCase();
+            // Comprovante PIX / transferência: prioriza data do pagamento
+            const ehComprovante = /pix|transfer[eê]ncia|comprovante|transa[cç][aã]o efetuada|pagamento realizado/i.test(lower);
+            const labelsPagamento = [
+                'data da transferência', 'data da transferencia', 'data do pagamento',
+                'data de pagamento', 'transferência efetuada em', 'transferencia efetuada em',
+                'transação efetuada em', 'transacao efetuada em', 'efetuada em',
+                'data da transação', 'data da transacao'
+            ];
+            const labelsVencimento = [
+                'data de vencimento', 'data do vencimento', 'vencimento',
+                'data do documento', 'data doc'
+            ];
+            const labelsOrdenados = ehComprovante
+                ? [...labelsPagamento, ...labelsVencimento]
+                : [...labelsVencimento, ...labelsPagamento];
+
+            for (const label of labelsOrdenados) {
+                const re = new RegExp(
+                    escapeRegex(label) + '\\s*[:\\-]?\\s*(\\d{1,2}[\\/\\-\\.]\\d{1,2}[\\/\\-\\.]\\d{2,4})',
+                    'i'
+                );
+                const m = clean.match(re);
+                if (m) return formatarData(m[1]);
+            }
+
+            const m2 = clean.match(/(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4})\s*(?:às|as)\s*\d/i);
+            if (m2) return formatarData(m2[1]);
+
+            const all = [...clean.matchAll(/(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/g)];
+            if (all.length) {
+                // Preferir data perto de palavras de pagamento/vencimento
+                for (const m of all) {
+                    const idx = m.index;
+                    const contexto = clean.substring(Math.max(0, idx - 50), idx + 30).toLowerCase();
+                    if (ehComprovante && /pag|transf|efetuad|realizad/.test(contexto)) return formatarData(m[1]);
+                    if (!ehComprovante && /venc/.test(contexto)) return formatarData(m[1]);
+                }
+                for (const m of all) {
+                    const idx = m.index;
+                    const contexto = clean.substring(Math.max(0, idx - 40), idx + 30).toLowerCase();
+                    if (/venc|pag|transf|efetuad/.test(contexto)) return formatarData(m[1]);
+                }
+                return formatarData(all[0][1]);
+            }
+            return 'Não identificada';
+        }
+
+        function extractValor(clean) {
+            // Aceita 1.234,56 e também 1234,56 / 23001,00 (sem ponto de milhar)
+            const reNum = '(\\d{1,3}(?:\\.\\d{3})+|\\d+),(\\d{2})';
+
+            const labelsOrdenados = [
+                'valor total a pagar',
+                '(=) valor documento', '(=)valor documento', '(=) valor do documento',
+                'valor do documento', 'valor documento',
+                'valor do pagamento', 'valor da transferência', 'valor da transferencia',
+                'valor a pagar', 'valor do título', 'valor do titulo',
+                '(=) valor cobrado', 'valor cobrado',
+                'valor'
+            ];
+
+            for (const label of labelsOrdenados) {
+                const re = new RegExp(
+                    escapeRegex(label) + '\\s*[:\\-]?\\s*[R$\\s]*' + reNum,
+                    'i'
+                );
+                const m = clean.match(re);
+                if (m && m[1] !== undefined) {
+                    const valorStr = m[1] + ',' + m[2];
+                    return { valor: valorStr, numerico: parseValorBr(valorStr) };
+                }
+            }
+
+            // R$ próximo a valor (evita pegar tarifa isolada quando há label)
+            const mR = clean.match(new RegExp('R\\$\\s*' + reNum));
+            if (mR) {
+                const valorStr = mR[1] + ',' + mR[2];
+                return { valor: valorStr, numerico: parseValorBr(valorStr) };
+            }
+
+            // Último recurso: maior valor monetário do texto (reduz pegar juros/multa pequenos)
+            const todos = [...clean.matchAll(new RegExp(reNum, 'g'))];
+            if (todos.length) {
+                let melhor = null;
+                let melhorNum = -1;
+                for (const m of todos) {
+                    const valorStr = m[1] + ',' + m[2];
+                    const n = parseValorBr(valorStr);
+                    if (n > melhorNum) {
+                        melhorNum = n;
+                        melhor = valorStr;
+                    }
+                }
+                if (melhor) return { valor: melhor, numerico: melhorNum };
+            }
+
+            return { valor: 'Não identificado', numerico: 0 };
+        }
+
+        function extractIdentificacao(clean) {
+            const reNosso = /(?:nosso\s+n[uú]mero|n[uú]mero\s+do\s+documento|n[uú]mero\s+doc\.?|no\.?\s+documento)\s*[:\-]?\s*([A-Z0-9.\-\/]{3,30})/i;
+            const mNosso = clean.match(reNosso);
+            if (mNosso && mNosso[1] && !/^(dm|nce|rg|r\$)$/i.test(mNosso[1].trim())) {
+                return mNosso[1].trim().substring(0, 40);
+            }
+
+            const reContrato = /(?:n[uú]mero\s+do\s+contrato|contrato\s*\(id\)|id\s*[:\-]?)\s*[:\-]?\s*(\d{3,15})/i;
+            const mContrato = clean.match(reContrato);
+            if (mContrato && mContrato[1]) return mContrato[1].trim();
+
+            // ID de transação PIX (E2E / endToEnd) — útil e comum
+            const reE2E = /(?:id\s+da\s+transa[cç][aã]o|end\s*to\s*end|e2e|id\s+transa[cç][aã]o)\s*[:\-]?\s*([A-Z0-9]{20,40})/i;
+            const mE2E = clean.match(reE2E);
+            if (mE2E && mE2E[1]) return mE2E[1].trim().substring(0, 40);
+
+            for (const label of LABELS_IDENTIFICACAO) {
+                const re = new RegExp(
+                    escapeRegex(label) +
+                    '\\s*[:\\-]?\\s*([A-Za-zÁÉÍÓÚÂÊÔÃÕÇàáâãéêíóôõúüç0-9\\s&.,\\-+\\/]{2,80}?)' +
+                    '(?=\\s*(?:autentica[cç][aã]o|id\\s+da|controle|transa|dados\\s+da|tipo\\s+de|efetuada|pagador|benefici|$))',
+                    'i'
+                );
+                const m = clean.match(re);
+                if (m && m[1]) {
+                    let id = m[1]
+                        .replace(/\s{2,}/g, ' ')
+                        .replace(/\s*(autentica[cç][aã]o|controle|tipo de|dados da).*/i, '')
+                        .trim();
+                    // Aceita IDs hex longos só se vierem de label de identificação/transação
+                    const ehIdLongo = /^[0-9A-F]{20,}$/i.test(id);
+                    if (id.length >= 2 && id.length <= 80 && (!ehIdLongo || /transa|identifica|mensagem|descri/i.test(label))) {
+                        return id.substring(0, 80);
+                    }
+                }
+            }
+
+            const rePlano = /plano\s*[:\-]?\s*([A-Za-zÁÉÍÓÚÂÊÔÃÕÇàáâãéêíóôõúüç0-9\s.,\-]{5,60})/i;
+            const mPlano = clean.match(rePlano);
+            if (mPlano && mPlano[1]) {
+                return mPlano[1].replace(/\s{2,}/g, ' ').trim().substring(0, 60);
+            }
+
+            return '';
+        }
+
+        function extractCodigoBarras(clean) {
+            const m44 = clean.match(/(\d{44})/);
+            if (m44) return m44[1];
+            // Linha digitável clássica (com ou sem pontos/espaços)
+            const linha = clean.match(/(\d{5}\.?\d{5}\s+\d{5}\.?\d{6}\s+\d{5}\.?\d{6}\s+\d\s+\d{14})/);
+            if (linha) return linha[1].replace(/\s+/g, ' ');
+            const linhaFlex = clean.match(/(\d{5}\.?\d{5}\s*\d{5}\.?\d{6}\s*\d{5}\.?\d{6}\s*\d\s*\d{14})/);
+            if (linhaFlex) return linhaFlex[1].replace(/\s+/g, ' ');
+            return '';
+        }
+
+        function parseDocumento(text, filename, fileObj) {
+            const clean = text.replace(/\s+/g, ' ').trim();
+            const secaoRecebedor = extrairSecaoRecebedor(clean);
+            const valorR = extractValor(clean);
+            return {
+                nome: (extractBeneficiario(secaoRecebedor, clean) || '').toUpperCase(),
+                dataPagamento: extractData(clean),
+                valor: valorR.valor,
+                valorNumerico: valorR.numerico,
+                identificacao: (extractIdentificacao(clean) || '').toUpperCase(),
+                codigoBarras: extractCodigoBarras(clean),
+                arquivo: filename,
+                file: fileObj || null,
+                rawText: text
+            };
+        }
+
+        // ===================== UI - ARQUIVOS =====================
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const pdfs = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+            if (!pdfs.length) {
+                showToast('Apenas arquivos PDF.', 'error');
+                return;
+            }
+            addFiles(pdfs);
+        });
+        fileInput.addEventListener('change', e => {
+            addFiles(Array.from(e.target.files));
+            fileInput.value = '';
+        });
+
+        function addFiles(newFiles) {
+            newFiles.forEach(f => files.push({ file: f, name: f.name, status: 'pending' }));
+            updateFileList();
+            showToast(`${newFiles.length} arquivo(s) adicionado(s).`, 'success');
+        }
+
+        function updateFileList() {
+            const content = document.getElementById('fileListContent');
+            if (!files.length) {
+                content.innerHTML = '<span style="color:#8b98a5;font-size:0.8rem;">Nenhum arquivo</span>';
+                return;
+            }
+            const counts = { pending: 0, processing: 0, done: 0, error: 0 };
+            files.forEach(f => { if (counts[f.status] !== undefined) counts[f.status]++; });
+            const total = files.length;
+            let html = '';
+            html += `<span class="summary-badge total"><span class="num">${total}</span> total</span>`;
+            if (counts.pending) html += `<span class="summary-badge pending"><span class="num">${counts.pending}</span> aguardando</span>`;
+            if (counts.processing) html += `<span class="summary-badge processing"><span class="num">${counts.processing}</span> processando</span>`;
+            if (counts.done) html += `<span class="summary-badge done"><span class="num">${counts.done}</span> lidos</span>`;
+            if (counts.error) html += `<span class="summary-badge error"><span class="num">${counts.error}</span> erros</span>`;
+            content.innerHTML = html;
+        }
+
+        async function processFiles() {
+            const pending = files.filter(f => f.status === 'pending');
+            if (!pending.length) {
+                showToast('Nenhum arquivo pendente.', 'info');
+                return;
+            }
+            const wrap = document.getElementById('progressWrap');
+            const fill = document.getElementById('progressFill');
+            const txt = document.getElementById('loadingText');
+            wrap.style.display = 'block';
+            txt.style.display = 'block';
+
+            let done = 0;
+            let semTexto = 0;
+            for (const fo of pending) {
+                fo.status = 'processing';
+                updateFileList();
+                try {
+                    const text = await extractText(fo.file);
+                    if (!text || text.replace(/\s+/g, '').length < 40) {
+                        // PDF sem texto extraível (provável scan/imagem)
+                        semTexto++;
+                        boletos.push({
+                            nome: 'NÃO IDENTIFICADO (PDF SEM TEXTO)',
+                            dataPagamento: 'Não identificada',
+                            valor: 'Não identificado',
+                            valorNumerico: 0,
+                            identificacao: 'PDF POSSIVELMENTE ESCANEADO',
+                            codigoBarras: '',
+                            arquivo: fo.name,
+                            file: fo.file,
+                            rawText: text || ''
+                        });
+                        fo.status = 'error';
+                    } else {
+                        boletos.push(parseDocumento(text, fo.name, fo.file));
+                        fo.status = 'done';
+                    }
+                } catch (err) {
+                    console.error(fo.name, err);
+                    fo.status = 'error';
+                }
+                done++;
+                fill.style.width = ((done / pending.length) * 100) + '%';
+                txt.textContent = `Processando ${done} de ${pending.length}...`;
+                updateFileList();
+            }
+            wrap.style.display = 'none';
+            txt.style.display = 'none';
+            updateReport();
+            if (semTexto) {
+                showToast(`${done} processado(s). ${semTexto} sem texto (possível scan).`, 'info');
+            } else {
+                showToast(`${done} arquivo(s) processado(s).`, 'success');
+            }
+        }
+
+        // ===================== UI - TABELA E FILTROS =====================
+        function updateReport() {
+            const searchArea = document.getElementById('searchArea');
+            if (!boletos.length) {
+                searchArea.classList.remove('show');
+                document.getElementById('searchData').value = '';
+                document.getElementById('searchTexto').value = '';
+                document.getElementById('searchValor').value = '';
+                document.getElementById('reportContent').innerHTML = `
+                    <div class="empty">
+                        <div class="icon">📋</div>
+                        <p>Nenhum documento processado.</p>
+                        <p style="font-size:0.85rem;margin-top:4px;">Arraste PDFs e clique em Processar.</p>
+                    </div>`;
+                return;
+            }
+            searchArea.classList.add('show');
+            filtrarTabela();
+        }
+
+        function renderTabela(lista) {
+            if (!lista.length) {
+                document.getElementById('reportContent').innerHTML = `
+                    <div class="empty">
+                        <div class="icon">🔍</div>
+                        <p>Nenhum resultado para a busca.</p>
+                    </div>`;
+                document.getElementById('searchCount').textContent = '0 de ' + boletos.length;
+                return;
+            }
+
+            let html = `<div class="table-wrap"><table>
+                <thead><tr>
+                    <th>#</th>
+                    <th>PDF</th>
+                    <th>Arquivo</th>
+                    <th>Data</th>
+                    <th>Beneficiário / Recebedor</th>
+                    <th>Identificação</th>
+                    <th>Valor</th>
+                </tr></thead><tbody>`;
+
+            lista.forEach(b => {
+                const arqOriginal = b.arquivo;
+                const arqExibicao = (arqOriginal.length > 28 ? arqOriginal.slice(0, 28) + '…' : arqOriginal).toUpperCase();
+                const arqCopia = limparArquivoParaCopia(arqOriginal);
+                const idxOrig = boletos.indexOf(b) + 1;
+                const marcado = linhasMarcadas.has(idxOrig - 1) ? ' marcada' : '';
+                const temPdf = b.file ? true : false;
+                const btnPdf = temPdf
+                    ? `<button class="btn-pdf" title="Abrir PDF" data-pdf-idx="${idxOrig - 1}">📄</button>`
+                    : `<span class="btn-pdf-disabled" title="PDF não disponível (dado importado)">—</span>`;
+
+                html += `<tr class="${marcado}" data-idx="${idxOrig - 1}">
+                    <td>${idxOrig}</td>
+                    <td class="td-pdf">${btnPdf}</td>
+                    <td style="font-size:0.8rem;color:#8b98a5" title="${esc(b.arquivo)}" data-copy="${esc(arqCopia)}">${esc(arqExibicao)}</td>
+                    <td data-copy="${esc(b.dataPagamento)}">${esc(b.dataPagamento)}</td>
+                    <td data-copy="${esc(b.nome)}">${esc(b.nome)}</td>
+                    <td class="mono" title="${esc(b.identificacao)}" data-copy="${esc(b.identificacao || '')}">${esc(b.identificacao || '—')}</td>
+                    <td class="valor" data-copy="${esc(b.valor)}">${esc(b.valor)}</td>
+                </tr>`;
+            });
+
+            html += '</tbody></table></div>';
+            document.getElementById('reportContent').innerHTML = html;
+
+            document.querySelectorAll('#reportContent tbody tr').forEach(tr => {
+                tr.addEventListener('click', onLinhaClick);
+                tr.addEventListener('dblclick', onLinhaDblClick);
+            });
+
+            document.querySelectorAll('#reportContent .btn-pdf').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const idx = parseInt(this.dataset.pdfIdx, 10);
+                    abrirPdf(boletos[idx]);
+                });
+            });
+
+            const temFiltro = document.getElementById('searchData').value.trim() ||
+                              document.getElementById('searchTexto').value.trim() ||
+                              document.getElementById('searchValor').value.trim();
+
+            document.getElementById('searchCount').textContent = temFiltro
+                ? `${lista.length} de ${boletos.length}`
+                : `${boletos.length} registro(s)`;
+        }
+
+        // Filtro combinado com normalização inteligente de data e valor
+        function filtrarTabela() {
+            const qData   = document.getElementById('searchData').value.trim().toLowerCase();
+            const qTexto  = document.getElementById('searchTexto').value.trim().toLowerCase();
+            const qValor  = document.getElementById('searchValor').value.trim().toLowerCase();
+
+            const normalizarValor = (v) => v.replace(/\./g, '').toLowerCase();
+            const normalizarData  = (d) => d.replace(/[\/\-\.]/g, '').toLowerCase();
+
+            const filtrados = boletos.filter(b => {
+                if (qData) {
+                    if (!normalizarData(b.dataPagamento).includes(normalizarData(qData))) return false;
+                }
+                if (qTexto) {
+                    const texto = [b.arquivo, b.nome, b.identificacao].join(' ').toLowerCase();
+                    if (!texto.includes(qTexto)) return false;
+                }
+                if (qValor) {
+                    if (!normalizarValor(b.valor).includes(normalizarValor(qValor))) return false;
+                }
+                return true;
+            });
+
+            renderTabela(filtrados);
+        }
+
+        function onLinhaClick(e) {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                const idx = parseInt(this.dataset.idx, 10);
+                if (linhasMarcadas.has(idx)) {
+                    linhasMarcadas.delete(idx);
+                    this.classList.remove('marcada');
+                } else {
+                    linhasMarcadas.add(idx);
+                    this.classList.add('marcada');
+                }
+            }
+        }
+
+        function onLinhaDblClick(e) {
+            e.preventDefault();
+            const idx = parseInt(this.dataset.idx, 10);
+            const td = e.target.closest('td');
+
+            if (td) {
+                const texto = td.dataset.copy || td.textContent.trim();
+                if (texto && texto !== '—') {
+                    copiarTexto(texto);
+                    return;
+                }
+            }
+
+            const b = boletos[idx];
+            if (b) {
+                const linha = [limparArquivoParaCopia(b.arquivo), b.dataPagamento, b.nome, b.identificacao, b.valor]
+                    .filter(Boolean).join(' | ');
+                copiarTexto(linha);
+            }
+        }
+
+        function abrirPdf(boleto) {
+            if (!boleto || !boleto.file) {
+                showToast('PDF não disponível (dado importado ou sem arquivo).', 'error');
+                return;
+            }
+            try {
+                const url = URL.createObjectURL(boleto.file);
+                window.open(url, '_blank');
+                // Revoga após alguns segundos para liberar memória (o navegador já carregou)
+                setTimeout(() => URL.revokeObjectURL(url), 60000);
+            } catch (err) {
+                console.error(err);
+                showToast('Erro ao abrir o PDF.', 'error');
+            }
+        }
+
+        function copiarTexto(texto) {
+            navigator.clipboard.writeText(texto).then(() => {
+                showToast('Copiado: ' + (texto.length > 40 ? texto.slice(0, 40) + '…' : texto), 'success');
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = texto;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('Copiado: ' + (texto.length > 40 ? texto.slice(0, 40) + '…' : texto), 'success');
+            });
+        }
+
+        // ===================== EXPORTAÇÃO =====================
+        function dadosParaExport() {
+            const qData   = document.getElementById('searchData').value.trim().toLowerCase();
+            const qTexto  = document.getElementById('searchTexto').value.trim().toLowerCase();
+            const qValor  = document.getElementById('searchValor').value.trim().toLowerCase();
+
+            const normalizarValor = (v) => v.replace(/\./g, '').toLowerCase();
+            const normalizarData  = (d) => d.replace(/[\/\-\.]/g, '').toLowerCase();
+
+            return boletos.filter(b => {
+                if (qData && !normalizarData(b.dataPagamento).includes(normalizarData(qData))) return false;
+                if (qTexto) {
+                    const texto = [b.arquivo, b.nome, b.identificacao].join(' ').toLowerCase();
+                    if (!texto.includes(qTexto)) return false;
+                }
+                if (qValor && !normalizarValor(b.valor).includes(normalizarValor(qValor))) return false;
+                return true;
+            });
+        }
+
+        function exportCSV() {
+            const lista = dadosParaExport();
+            if (!lista.length) {
+                showToast('Nada para exportar.', 'error');
+                return;
+            }
+            let csv = 'Arquivo,Data Pagamento,Beneficiário,Identificação,Valor\n';
+            lista.forEach(b => {
+                csv += `"${b.arquivo}","${b.dataPagamento}","${b.nome}","${b.identificacao}","${b.valor}"\n`;
+            });
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'relatorio_boletos.csv';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast('CSV exportado.', 'success');
+        }
+
+        function exportExcel() {
+            const lista = dadosParaExport();
+            if (!lista.length) {
+                showToast('Nada para exportar.', 'error');
+                return;
+            }
+            const rows = lista.map(b => ({
+                'Arquivo': b.arquivo,
+                'Data Pagamento': b.dataPagamento,
+                'Beneficiário': b.nome,
+                'Identificação': b.identificacao || '',
+                'Valor': b.valor
+            }));
+            const ws = XLSX.utils.json_to_sheet(rows);
+            ws['!cols'] = [
+                { wch: 35 }, { wch: 16 }, { wch: 40 }, { wch: 30 }, { wch: 14 }
+            ];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Boletos');
+            XLSX.writeFile(wb, 'relatorio_boletos.xlsx');
+            showToast('Excel exportado.', 'success');
+        }
+
+        // Exporta a lista completa de boletos em JSON (para reimportar depois)
+        function exportDados() {
+            if (!boletos.length) {
+                showToast('Nada para exportar.', 'error');
+                return;
+            }
+            const payload = {
+                versao: 1,
+                exportadoEm: new Date().toISOString(),
+                total: boletos.length,
+                boletos: boletos.map(b => ({
+                    arquivo: b.arquivo,
+                    dataPagamento: b.dataPagamento,
+                    nome: b.nome,
+                    identificacao: b.identificacao || '',
+                    valor: b.valor,
+                    valorNumerico: b.valorNumerico || 0,
+                    codigoBarras: b.codigoBarras || ''
+                }))
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'dados_boletos.json';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast('Dados exportados (JSON).', 'success');
+        }
+
+        // Importa JSON gerado por exportDados e reconstrói a lista
+        function importDados(event) {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const data = JSON.parse(reader.result);
+                    let lista = [];
+                    if (Array.isArray(data)) {
+                        lista = data;
+                    } else if (data && Array.isArray(data.boletos)) {
+                        lista = data.boletos;
+                    } else {
+                        throw new Error('Formato inválido');
+                    }
+                    const normalizados = lista.map(b => ({
+                        arquivo: b.arquivo || b.Arquivo || '',
+                        dataPagamento: b.dataPagamento || b['Data Pagamento'] || b.data || 'Não identificada',
+                        nome: (b.nome || b.Beneficiário || b.beneficiario || 'Não identificado').toString().toUpperCase(),
+                        identificacao: (b.identificacao || b.Identificação || b.identificacao || '').toString().toUpperCase(),
+                        valor: b.valor || b.Valor || 'Não identificado',
+                        valorNumerico: typeof b.valorNumerico === 'number' ? b.valorNumerico : parseValorBr(String(b.valor || b.Valor || '0')),
+                        codigoBarras: b.codigoBarras || '',
+                        rawText: ''
+                    })).filter(b => b.arquivo || b.nome !== 'NÃO IDENTIFICADO');
+
+                    if (!normalizados.length) {
+                        showToast('Arquivo sem registros válidos.', 'error');
+                        return;
+                    }
+
+                    const adicionar = boletos.length > 0
+                        ? confirm(`Já existem ${boletos.length} registro(s). Deseja ADICIONAR os ${normalizados.length} importados?\n\nOK = adicionar | Cancelar = substituir tudo`)
+                        : true;
+
+                    if (adicionar === false && boletos.length > 0) {
+                        boletos = normalizados;
+                        linhasMarcadas.clear();
+                    } else {
+                        boletos = boletos.concat(normalizados);
+                    }
+                    updateReport();
+                    showToast(`${normalizados.length} registro(s) importado(s).`, 'success');
+                } catch (err) {
+                    console.error(err);
+                    showToast('Erro ao ler o arquivo JSON.', 'error');
+                }
+            };
+            reader.onerror = () => showToast('Erro ao ler o arquivo.', 'error');
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function clearAll() {
+            if (!boletos.length && !files.length) {
+                showToast('Nada para limpar.', 'info');
+                return;
+            }
+            if (confirm('Limpar todos os dados?')) {
+                files = [];
+                boletos = [];
+                linhasMarcadas.clear();
+                document.getElementById('searchData').value = '';
+                document.getElementById('searchTexto').value = '';
+                document.getElementById('searchValor').value = '';
+                updateFileList();
+                updateReport();
+                showToast('Dados limpos.', 'success');
+            }
+        }
+    </script>
+</body>
+</html>

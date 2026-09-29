@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leitor de XML NF-e - Conferência Fiscal</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #1e293b;
+      --accent: #2563eb;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --bg: #f3f6fb;
+      --card: #ffffff;
+      --border: #d7dee7;
+      --text: #0f172a;
+    }
+
+    body {
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 12px 24px;
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 2000px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, .05);
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .upload-area {
+      border: 2px dashed var(--accent);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      background: #eff6ff;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 12px;
+    }
+
+    .upload-area:hover {
+      background: #dbeafe;
+      border-color: #1d4ed8;
+    }
+
+    .upload-area.dragover {
+      background: #dbeafe;
+      border-color: #1d4ed8;
+      transform: scale(1.02);
+    }
+
+    .upload-area p {
+      margin: 0;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .upload-area small {
+      display: block;
+      margin-top: 6px;
+      color: #64748b;
+      font-size: 0.75rem;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, .05);
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+      color: var(--primary);
+      font-weight: 700;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 6px;
+    }
+
+    .dados-gerais-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 12px;
+    }
+
+    .dado-item {
+      background: #f8fafc;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .dado-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .dado-valor {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--primary);
+      word-break: break-word;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      background: #fff;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #475569;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+      text-transform: uppercase;
+      font-size: 0.65rem;
+    }
+
+    td {
+      border: 1px solid var(--border);
+      padding: 8px;
+      color: var(--text);
+    }
+
+    td.numero {
+      text-align: right;
+      font-weight: 600;
+    }
+
+    tfoot td {
+      background: #f1f5f9;
+      font-weight: 800;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .status-autorizada {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-cancelada {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status-denegada {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .error {
+      background: #fee2e2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .success {
+      background: #dcfce7;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .overflow-x {
+      overflow-x: auto;
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <div class="header">
+      <h1>📋 Leitor de XML NF-e - Conferência Fiscal</h1>
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+        <p>Arraste o arquivo XML aqui ou clique para selecionar</p>
+        <small>Suporta arquivos .xml de NF-e</small>
+      </div>
+      <input type="file" id="fileInput" accept=".xml" onchange="handleFileSelect(event)">
+      <div id="messageArea"></div>
+    </div>
+
+    <div id="contentArea" style="display: none;">
+
+      <!-- Dados Gerais -->
+      <div class="card">
+        <h2>📌 Dados Gerais da Nota Fiscal</h2>
+        <div id="tabelaDadosGerais" class="dados-gerais-grid"></div>
+      </div>
+
+      <!-- Itens -->
+      <div class="card">
+        <h2>📦 Produtos / Serviços</h2>
+        <div class="overflow-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Descrição</th>
+                <th>NCM/SH</th>
+                <th>O/CST</th>
+                <th>CFOP</th>
+                <th>Valor Total</th>
+                <th>Valor Desc.</th>
+                <th>B. Cálc. ICMS</th>
+                <th>Valor ICMS</th>
+                <th>Valor IPI</th>
+                <th>Alíq. ICMS</th>
+                <th>Alíq. IPI</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaItens"></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="5" style="text-align: right; font-weight: 800;">TOTAIS:</td>
+                <td id="totalVTotal" class="numero"></td>
+                <td id="totalDesc" class="numero"></td>
+                <td id="totalBaseICMS" class="numero"></td>
+                <td id="totalICMS" class="numero"></td>
+                <td id="totalIPI" class="numero"></td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+
+    // Configurar drag and drop
+    const uploadArea = document.getElementById('uploadArea');
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        processarArquivo(files[0]);
+      }
+    });
+
+    function handleFileSelect(event) {
+      const files = event.target.files;
+      if (files.length > 0) {
+        processarArquivo(files[0]);
+      }
+    }
+
+    function processarArquivo(file) {
+      if (!file.name.endsWith('.xml')) {
+        mostrarMensagem('Erro: Selecione um arquivo XML válido', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const xmlString = e.target.result;
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+
+          if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
+            mostrarMensagem('Erro: Arquivo XML inválido', 'error');
+            return;
+          }
+
+          extrairDados(xmlDoc);
+          mostrarMensagem('✓ Arquivo carregado com sucesso', 'success');
+          document.getElementById('contentArea').style.display = 'block';
+        } catch (error) {
+          mostrarMensagem('Erro ao processar arquivo: ' + error.message, 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function mostrarMensagem(msg, tipo) {
+      const area = document.getElementById('messageArea');
+      area.innerHTML = `<div class="${tipo}">${msg}</div>`;
+      setTimeout(() => { area.innerHTML = ''; }, 5000);
+    }
+
+    function extrairDados(xmlDoc) {
+      extrairDadosGerais(xmlDoc);
+      extrairItens(xmlDoc);
+    }
+
+    function criarDadoItem(label, valor) {
+      return `
+        <div class="dado-item">
+          <div class="dado-label">${label}</div>
+          <div class="dado-valor">${valor}</div>
+        </div>
+      `;
+    }
+
+    function extrairDadosGerais(xmlDoc) {
+      const ide = xmlDoc.querySelector('ide');
+      if (!ide) return;
+
+      const nNF = ide.querySelector('nNF')?.textContent || '-';
+      const serie = ide.querySelector('serie')?.textContent || '-';
+      const dhEmi = ide.querySelector('dhEmi')?.textContent || '-';
+      const dhSaiEnt = ide.querySelector('dhSaiEnt')?.textContent || '-';
+      const natOp = ide.querySelector('natOp')?.textContent || '-';
+      const tpNF = ide.querySelector('tpNF')?.textContent || '-';
+      const tpAmb = ide.querySelector('tpAmb')?.textContent || '-';
+
+      const emit = xmlDoc.querySelector('emit');
+      const nomeEmit = emit?.querySelector('xNome')?.textContent || '-';
+      const cnpjEmit = emit?.querySelector('CNPJ')?.textContent || '-';
+
+      const dest = xmlDoc.querySelector('dest');
+      const nomeDest = dest?.querySelector('xNome')?.textContent || 'Não informado';
+      const cnpjDest = dest?.querySelector('CNPJ')?.textContent || dest?.querySelector('CPF')?.textContent || '-';
+
+      const protNFe = xmlDoc.querySelector('protNFe');
+      const infProt = protNFe?.querySelector('infProt');
+      const status = infProt?.querySelector('cStat')?.textContent || '-';
+      const statusDescricao = obterDescricaoStatus(status);
+      const statusClass = obterClasseStatus(status);
+
+      const total = xmlDoc.querySelector('total');
+      const ICMSTot = total?.querySelector('ICMSTot');
+      const vNF = parseFloat(ICMSTot?.querySelector('vNF')?.textContent || 0);
+      const vProd = parseFloat(ICMSTot?.querySelector('vProd')?.textContent || 0);
+      const vDesc = parseFloat(ICMSTot?.querySelector('vDesc')?.textContent || 0);
+      const vICMS = parseFloat(ICMSTot?.querySelector('vICMS')?.textContent || 0);
+      const vIPI = parseFloat(ICMSTot?.querySelector('vIPI')?.textContent || 0);
+
+      const moeda = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+      let html = '';
+      html += criarDadoItem('NF-e', nNF);
+      html += criarDadoItem('Série', serie);
+      html += criarDadoItem('Data Emissão', formatarData(dhEmi));
+      html += criarDadoItem('Data Saída', formatarData(dhSaiEnt));
+      html += criarDadoItem('Natureza Operação', natOp);
+      html += criarDadoItem('Tipo', tpNF === '0' ? 'Entrada' : 'Saída');
+      html += criarDadoItem('Ambiente', tpAmb === '1' ? 'Produção' : 'Homologação');
+      html += criarDadoItem('Status', `<span class="status-badge ${statusClass}">${statusDescricao}</span>`);
+      html += criarDadoItem('Emitente', nomeEmit);
+      html += criarDadoItem('CNPJ Emitente', cnpjEmit);
+      html += criarDadoItem('Destinatário', nomeDest);
+      html += criarDadoItem('CNPJ/CPF Dest.', cnpjDest);
+      html += criarDadoItem('Valor Produtos', moeda(vProd));
+      html += criarDadoItem('Desconto', moeda(vDesc));
+      html += criarDadoItem('ICMS', moeda(vICMS));
+      html += criarDadoItem('IPI', moeda(vIPI));
+      html += criarDadoItem('Valor Total', moeda(vNF));
+
+      document.getElementById('tabelaDadosGerais').innerHTML = html;
+    }
+
+    function extrairItens(xmlDoc) {
+      const detalhes = xmlDoc.querySelectorAll('det');
+      let tabelaItens = '';
+      const moeda = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+      let totVTotal = 0, totDesc = 0, totBaseICMS = 0, totICMS = 0, totIPI = 0;
+
+      detalhes.forEach((det, idx) => {
+        const nItem = det.getAttribute('nItem');
+        const prod = det.querySelector('prod');
+        const xProd = prod?.querySelector('xProd')?.textContent || '-';
+        const NCM = prod?.querySelector('NCM')?.textContent || '-';
+        const vProd = parseFloat(prod?.querySelector('vProd')?.textContent || 0);
+        const vDesc = parseFloat(prod?.querySelector('vDesc')?.textContent || 0);
+
+        // Extrair CFOP
+        const infAdProd = det.querySelector('infAdProd')?.textContent || '-';
+        const cfop = det.querySelector('CFOP')?.textContent || '-';
+
+        // Extrair O/CST
+        const imposto = det.querySelector('imposto');
+        let ocst = '-';
+        let vBaseICMS = 0;
+        let vICMS = 0;
+        let aliqICMS = 0;
+        let vIPI = 0;
+        let aliqIPI = 0;
+
+        // ICMS
+        const icms = imposto?.querySelector('ICMS > *');
+        if (icms) {
+          const orig = icms.querySelector('orig')?.textContent || '0';
+          const cst = icms.querySelector('CST')?.textContent || icms.querySelector('CSOSN')?.textContent || '00';
+          ocst = `${orig}/${cst}`;
+          vBaseICMS = parseFloat(icms.querySelector('vBC')?.textContent || 0);
+          vICMS = parseFloat(icms.querySelector('vICMS')?.textContent || 0);
+          aliqICMS = parseFloat(icms.querySelector('pICMS')?.textContent || 0);
+        }
+
+        // IPI - Busca em qualquer nível
+        const ipiElement = imposto?.querySelector('IPI');
+        if (ipiElement) {
+          const vIPIElement = ipiElement.querySelector('vIPI');
+          if (vIPIElement) {
+            vIPI = parseFloat(vIPIElement.textContent || 0);
+          }
+          const pIPIElement = ipiElement.querySelector('pIPI');
+          if (pIPIElement) {
+            aliqIPI = parseFloat(pIPIElement.textContent || 0);
+          }
+        }
+
+        totVTotal += vProd;
+        totDesc += vDesc;
+        totBaseICMS += vBaseICMS;
+        totICMS += vICMS;
+        totIPI += vIPI;
+
+        tabelaItens += `
+          <tr>
+            <td>${nItem}</td>
+            <td>${xProd}</td>
+            <td>${NCM}</td>
+            <td>${ocst}</td>
+            <td>${cfop}</td>
+            <td class="numero">${moeda(vProd)}</td>
+            <td class="numero">${moeda(vDesc)}</td>
+            <td class="numero">${moeda(vBaseICMS)}</td>
+            <td class="numero">${moeda(vICMS)}</td>
+            <td class="numero">${moeda(vIPI)}</td>
+            <td class="numero">${aliqICMS.toFixed(2)}%</td>
+            <td class="numero">${aliqIPI.toFixed(2)}%</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('tabelaItens').innerHTML = tabelaItens;
+
+      // Preencher totais
+      document.getElementById('totalVTotal').innerHTML = moeda(totVTotal);
+      document.getElementById('totalDesc').innerHTML = moeda(totDesc);
+      document.getElementById('totalBaseICMS').innerHTML = moeda(totBaseICMS);
+      document.getElementById('totalICMS').innerHTML = moeda(totICMS);
+      document.getElementById('totalIPI').innerHTML = moeda(totIPI);
+    }
+
+    function formatarData(data) {
+      if (!data || data === '-') return '-';
+      const date = new Date(data);
+      return date.toLocaleString('pt-BR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function obterDescricaoStatus(status) {
+      const statusMap = {
+        '100': 'Autorizada',
+        '101': 'Cancelada',
+        '110': 'Denegada',
+        '150': 'Uso Denegado',
+        '301': 'Uso Autorizado',
+        '302': 'Uso Denegado'
+      };
+      return statusMap[status] || `Status ${status}`;
+    }
+
+    function obterClasseStatus(status) {
+      if (status === '100' || status === '301') return 'status-autorizada';
+      if (status === '101') return 'status-cancelada';
+      if (status === '110' || status === '150' || status === '302') return 'status-denegada';
+      return '';
+    }
+
+  </script>
+
+</body>
+
+</html>

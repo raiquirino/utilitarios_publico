@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Raitec PDF Master v11</title>
+  <style>
+    :root {
+      --primary: #007bff;
+      --success: #28a745;
+      --danger: #dc3545;
+      --warning: #fd7e14;
+      --bg: #f8f9fa;
+      --sidebar-w: 340px;
+    }
+
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+    
+    .sidebar { width: var(--sidebar-w); background: white; border-right: 1px solid #ddd; padding: 18px; display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.05); z-index: 100; overflow-y: auto; }
+    .main-content { flex: 1; display: flex; flex-direction: column; background: #e9ecef; position: relative; }
+    
+    #thumbnailView { 
+      flex: 1; padding: 25px; overflow-y: auto; display: none; 
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 28px; 
+    }
+    #fullView { flex: 1; display: none; }
+    #fullView iframe { width: 100%; height: 100%; border: none; }
+
+    /* Thumbnails */
+    .page-thumb { 
+      background: white; border: 2px solid #eee; border-radius: 8px; 
+      padding: 10px; text-align: center; cursor: grab; position: relative;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      z-index: 1; user-select: none;
+    }
+    .page-thumb:hover { 
+      transform: scale(1.35); z-index: 100; 
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2); border-color: var(--primary);
+    }
+    .page-thumb.selected { 
+      border-color: var(--primary); 
+      box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
+      background: #f0f7ff;
+    }
+    .page-thumb.dragging { opacity: 0.25; transform: scale(0.9); }
+    .page-thumb canvas { width: 100%; border: 1px solid #ddd; border-radius: 4px; pointer-events: none; }
+    
+    .page-num { 
+      position: absolute; top: -8px; left: -8px; background: var(--primary); color: white; 
+      width: 22px; height: 22px; border-radius: 50%; font-size: 11px; 
+      display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 101; 
+    }
+    .page-info { 
+      font-size: 11px; color: #333; font-weight: 600; margin-bottom: 6px; 
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      background: #f0f4f8; padding: 3px 6px; border-radius: 4px;
+      border: 1px solid #e0e6ed;
+    }
+    .page-sub { font-size: 9px; color: #888; margin-top: 4px; }
+
+    /* Botões na miniatura */
+    .thumb-actions {
+      position: absolute; top: -6px; right: -6px; display: flex; gap: 3px; z-index: 102;
+      opacity: 0; transition: opacity 0.15s;
+    }
+    .page-thumb:hover .thumb-actions { opacity: 1; }
+    .thumb-btn {
+      width: 22px; height: 22px; border-radius: 50%; border: none; cursor: pointer;
+      font-size: 11px; display: flex; align-items: center; justify-content: center;
+      color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .thumb-btn.delete { background: var(--danger); }
+    .thumb-btn.rotate { background: var(--warning); }
+    .thumb-btn:hover { transform: scale(1.15); }
+
+    /* Checkbox de seleção */
+    .thumb-check {
+      position: absolute; bottom: 22px; left: 6px; z-index: 102;
+      width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary);
+    }
+
+    /* Upload */
+    .upload-area { 
+      background: #f0f7ff; border: 2px dashed var(--primary); border-radius: 10px; 
+      padding: 20px 12px; text-align: center; cursor: pointer; transition: all 0.3s ease;
+    }
+    .upload-area.dragover { 
+      background: #cce5ff; border-color: #0056b3; transform: scale(1.02);
+      box-shadow: 0 0 15px rgba(0,123,255,0.3);
+    }
+    .upload-area svg { transition: transform 0.3s; }
+    .upload-area.dragover svg { transform: translateY(-5px); }
+    
+    .action-choice { display: none; margin-top: 16px; }
+    .choice-btn { 
+      width: 100%; padding: 12px; margin-bottom: 8px; border: none; border-radius: 8px; 
+      font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: 0.2s; font-size: 14px;
+    }
+    .btn-merge { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+    .btn-split { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; }
+    .choice-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .choice-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    .tool-panel { display: none; margin-top: 16px; border-top: 1px solid #eee; padding-top: 16px; }
+    .btn-exec { width: 100%; padding: 11px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 8px; color: white; font-size: 13px; }
+    .bg-success { background: var(--success); }
+    .bg-primary { background: var(--primary); }
+    .bg-danger { background: var(--danger); }
+    .bg-warning { background: var(--warning); }
+    .bg-secondary { background: #6c757d; }
+
+    .placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #999; text-align: center; }
+    #loader { display: none; font-size: 12px; color: var(--primary); text-align: center; margin: 8px 0; font-weight: bold; }
+
+    /* Sort */
+    .sort-controls { margin-bottom: 10px; }
+    .sort-controls label { font-size: 0.78em; color: #555; font-weight: bold; display: block; margin-bottom: 5px; }
+    .sort-buttons { display: flex; flex-wrap: wrap; gap: 5px; }
+    .sort-btn {
+      flex: 1; min-width: 60px; padding: 7px 4px; border: 1px solid #ddd; border-radius: 6px;
+      background: #f8f9fa; font-size: 11px; cursor: pointer; transition: 0.2s; text-align: center;
+    }
+    .sort-btn:hover { background: #e9ecef; border-color: var(--primary); }
+    .sort-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    /* Ações em lote */
+    .batch-actions { 
+      display: none; margin-bottom: 12px; padding: 10px; background: #f0f7ff; 
+      border-radius: 8px; border: 1px solid #cce5ff;
+    }
+    .batch-actions.visible { display: block; }
+    .batch-actions .title { font-size: 0.78em; font-weight: bold; color: #1565c0; margin-bottom: 8px; }
+    .batch-btns { display: flex; flex-wrap: wrap; gap: 5px; }
+    .batch-btn {
+      flex: 1; min-width: 70px; padding: 7px 4px; border: none; border-radius: 5px;
+      font-size: 11px; cursor: pointer; color: white; font-weight: 600;
+    }
+
+    .file-count { font-size: 0.75em; color: #666; margin-top: 6px; text-align: center; }
+    .hint { font-size: 0.78em; color: #666; margin: 8px 0; line-height: 1.4; }
+
+    .add-more-btn {
+      width: 100%; padding: 9px; margin-top: 8px; border: 1px dashed #aaa; border-radius: 6px;
+      background: #fafafa; font-size: 12px; cursor: pointer; color: #555; transition: 0.2s;
+    }
+    .add-more-btn:hover { background: #f0f7ff; border-color: var(--primary); color: var(--primary); }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <div style="margin-bottom: 16px;">
+      <h1 style="font-size: 1.35em; color: var(--primary); margin: 0;">Raitec PDF</h1>
+      <p style="font-size: 0.82em; color: #888; margin: 2px 0 0;">Gestão Visual de Documentos</p>
+    </div>
+
+    <div id="dropZone" class="upload-area">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+      <div style="font-weight: bold; margin-top: 8px; font-size: 14px;">Arraste ou Selecione</div>
+      <p style="font-size: 0.68em; color: #666; margin-top: 4px;">Arquivos PDF aqui</p>
+      <input type="file" id="pdfInput" multiple accept="application/pdf" style="display:none;" />
+    </div>
+
+    <button id="addMoreBtn" class="add-more-btn" style="display:none;" onclick="document.getElementById('pdfInputAdd').click()">
+      + Adicionar mais PDFs
+    </button>
+    <input type="file" id="pdfInputAdd" multiple accept="application/pdf" style="display:none;" />
+
+    <div id="loader">⏳ Processando páginas...</div>
+    <div id="fileCount" class="file-count" style="display:none;"></div>
+
+    <div id="actionChoice" class="action-choice">
+      <div style="font-size: 0.78em; color: #666; margin-bottom: 8px; font-weight: bold; text-transform: uppercase;">Modo:</div>
+      <button class="choice-btn btn-merge" id="btnMerge" onclick="setMode('merge')">
+        <span>📎</span> Junção (Visual)
+      </button>
+      <button class="choice-btn btn-split" id="btnSplit" onclick="setMode('split')">
+        <span>✂️</span> Separação
+      </button>
+    </div>
+
+    <div id="mergePanel" class="tool-panel">
+      <!-- Ações em lote (aparecem quando há seleção) -->
+      <div id="batchActions" class="batch-actions">
+        <div class="title"><span id="selectedCount">0</span> página(s) selecionada(s)</div>
+        <div class="batch-btns">
+          <button class="batch-btn bg-warning" onclick="rotateSelected()">🔄 Girar</button>
+          <button class="batch-btn bg-danger" onclick="deleteSelected()">🗑️ Remover</button>
+          <button class="batch-btn bg-primary" onclick="extractSelected()">📤 Extrair</button>
+          <button class="batch-btn bg-secondary" onclick="clearSelection()">✕ Limpar</button>
+        </div>
+      </div>
+
+      <div class="sort-controls">
+        <label>Ordenar páginas:</label>
+        <div class="sort-buttons">
+          <button class="sort-btn" onclick="sortPages('name-asc')">A → Z</button>
+          <button class="sort-btn" onclick="sortPages('name-desc')">Z → A</button>
+          <button class="sort-btn" onclick="sortPages('natural')">Natural</button>
+          <button class="sort-btn" onclick="sortPages('original')">Original</button>
+        </div>
+      </div>
+
+      <div class="hint">
+        • Clique na miniatura para <b>selecionar</b><br>
+        • Arraste para <b>reordenar</b><br>
+        • Botões no canto: girar / remover
+      </div>
+
+      <button class="btn-exec bg-success" onclick="executeMerge()">Gerar PDF Unido</button>
+      <button class="btn-exec bg-secondary" style="margin-top:6px;" onclick="selectAll()">Selecionar Todas</button>
+    </div>
+
+    <div id="splitPanel" class="tool-panel">
+      <div style="font-size: 0.82em; color: #555;">
+        <label style="display:block; margin-bottom:8px; cursor:pointer;">
+          <input type="radio" name="splitMode" value="all" checked onchange="document.getElementById('rangeInputs').style.display='none'"> Individual (Todas as páginas)
+        </label>
+        <label style="display:block; cursor:pointer;">
+          <input type="radio" name="splitMode" value="range" onchange="document.getElementById('rangeInputs').style.display='flex'"> Intervalo Específico
+        </label>
+        <div id="rangeInputs" style="display:none; gap:5px; align-items:center; margin-top:10px; background:#f8f9fa; padding:10px; border-radius:5px;">
+          De: <input type="number" id="pFrom" value="1" min="1" style="width:45px;"> 
+          até: <input type="number" id="pTo" value="2" min="1" style="width:45px;">
+        </div>
+      </div>
+      <button class="btn-exec bg-primary" onclick="executeSplit()">Separar e Baixar</button>
+    </div>
+
+    <div style="margin-top: auto; font-size: 0.68em; color: #bbb; text-align: center; padding-top: 12px;">Raitec Solutions v11</div>
+  </div>
+
+  <div class="main-content">
+    <div id="placeholder" class="placeholder">
+      <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+      <p>Arraste arquivos PDF para começar.</p>
+    </div>
+    <div id="thumbnailView"></div>
+    <div id="fullView"><iframe id="pdfIframe"></iframe></div>
+  </div>
+
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    
+    let currentFiles = [];
+    let pageObjects = [];
+    let originalOrder = [];
+    let sortableInitialized = false;
+    let selectedIds = new Set();
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('pdfInput');
+    const fileInputAdd = document.getElementById('pdfInputAdd');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    ['dragleave', 'dragend'].forEach(t => dropZone.addEventListener(t, () => dropZone.classList.remove('dragover')));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) handleSelection(e.dataTransfer.files, false);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) handleSelection(fileInput.files, false);
+      fileInput.value = '';
+    });
+
+    fileInputAdd.addEventListener('change', () => {
+      if (fileInputAdd.files.length) handleSelection(fileInputAdd.files, true);
+      fileInputAdd.value = '';
+    });
+
+    async function handleSelection(files, append = false) {
+      const pdfs = Array.from(files).filter(f => f.type === "application/pdf");
+      if (!pdfs.length) { alert("Selecione apenas arquivos PDF."); return; }
+
+      if (!append) {
+        currentFiles = pdfs;
+        pageObjects = [];
+        originalOrder = [];
+        selectedIds.clear();
+      } else {
+        currentFiles = currentFiles.concat(pdfs);
+      }
+
+      document.getElementById('placeholder').style.display = 'none';
+      document.getElementById('actionChoice').style.display = 'block';
+      document.getElementById('addMoreBtn').style.display = 'block';
+      document.getElementById('fileCount').style.display = 'block';
+
+      await setMode('merge');
+      if (append) {
+        await loadThumbnails(pdfs); // só adiciona os novos
+      } else {
+        await loadThumbnails(currentFiles, true); // recarrega tudo
+      }
+    }
+
+    async function setMode(mode) {
+      document.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('active'));
+      const thumbView = document.getElementById('thumbnailView');
+      const fullView = document.getElementById('fullView');
+
+      if (mode === 'merge') {
+        document.getElementById('btnMerge').classList.add('active');
+        thumbView.style.display = 'grid';
+        fullView.style.display = 'none';
+        document.getElementById('mergePanel').style.display = 'block';
+        document.getElementById('splitPanel').style.display = 'none';
+      } else {
+        document.getElementById('btnSplit').classList.add('active');
+        thumbView.style.display = 'none';
+        fullView.style.display = 'block';
+        document.getElementById('mergePanel').style.display = 'none';
+        document.getElementById('splitPanel').style.display = 'block';
+        if (currentFiles[0]) {
+          document.getElementById('pdfIframe').src = URL.createObjectURL(currentFiles[0]);
+        }
+      }
+    }
+
+    async function loadThumbnails(filesToLoad, clear = false) {
+      const loader = document.getElementById('loader');
+      loader.style.display = 'block';
+      const container = document.getElementById('thumbnailView');
+      
+      if (clear) {
+        container.innerHTML = '';
+        pageObjects = [];
+        originalOrder = [];
+      }
+
+      const { PDFDocument } = PDFLib;
+      let startIndex = pageObjects.length;
+
+      for (const file of filesToLoad) {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfDoc = await PDFDocument.load(arrayBuffer);
+        const pdfJS = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+        for (let i = 0; i < pdfDoc.getPageCount(); i++) {
+          const page = await pdfJS.getPage(i + 1);
+          const viewport = page.getViewport({ scale: 0.3 });
+          const canvas = document.createElement('canvas');
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+          const obj = {
+            file,
+            pageIndex: i,
+            pdfDoc,
+            canvas,
+            name: file.name.replace(/\.pdf$/i, ''),
+            fullName: file.name,
+            originalIndex: pageObjects.length,
+            rotation: 0
+          };
+          pageObjects.push(obj);
+          originalOrder.push(obj);
+
+          const id = pageObjects.length - 1;
+          const div = createThumbElement(obj, id);
+          container.appendChild(div);
+        }
+      }
+
+      updateFileCount();
+      initSortable();
+      loader.style.display = 'none';
+      updateBatchUI();
+    }
+
+    function createThumbElement(obj, id) {
+      const div = document.createElement('div');
+      div.className = 'page-thumb';
+      div.draggable = true;
+      div.dataset.id = id;
+
+      // Checkbox
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.className = 'thumb-check';
+      check.checked = selectedIds.has(id);
+      check.addEventListener('click', e => {
+        e.stopPropagation();
+        toggleSelect(id, check.checked);
+      });
+
+      // Botões de ação
+      const actions = document.createElement('div');
+      actions.className = 'thumb-actions';
+      actions.innerHTML = `
+        <button class="thumb-btn rotate" title="Girar 90°">🔄</button>
+        <button class="thumb-btn delete" title="Remover">✕</button>
+      `;
+      actions.querySelector('.rotate').onclick = e => { e.stopPropagation(); rotatePage(id); };
+      actions.querySelector('.delete').onclick = e => { e.stopPropagation(); deletePage(id); };
+
+      const num = document.createElement('div');
+      num.className = 'page-num';
+      num.textContent = id + 1;
+
+      // Nome do documento em cima (bem visível)
+      const info = document.createElement('div');
+      info.className = 'page-info';
+      info.textContent = obj.name;
+      info.title = obj.fullName;
+
+      // Canvas com rotação visual
+      const canvasClone = obj.canvas.cloneNode(true);
+      const ctx = canvasClone.getContext('2d');
+      ctx.drawImage(obj.canvas, 0, 0);
+      if (obj.rotation) {
+        applyCanvasRotation(canvasClone, obj.rotation);
+      }
+
+      // Número da página original embaixo
+      const sub = document.createElement('div');
+      sub.className = 'page-sub';
+      sub.textContent = `pág. ${obj.pageIndex + 1}`;
+
+      div.appendChild(check);
+      div.appendChild(actions);
+      div.appendChild(num);
+      div.appendChild(info);       // nome em cima
+      div.appendChild(canvasClone);
+      div.appendChild(sub);        // pág. embaixo
+
+      div.addEventListener('click', e => {
+        if (e.target.closest('.thumb-actions') || e.target.classList.contains('thumb-check')) return;
+        const newState = !selectedIds.has(id);
+        toggleSelect(id, newState);
+        check.checked = newState;
+      });
+
+      return div;
+    }
+
+    function applyCanvasRotation(canvas, degrees) {
+      // Para visualização: recria com rotação
+      // (rotação real é aplicada no pdf-lib na hora de gerar)
+    }
+
+    function toggleSelect(id, selected) {
+      if (selected) selectedIds.add(id);
+      else selectedIds.delete(id);
+      
+      const thumb = document.querySelector(`.page-thumb[data-id="${id}"]`);
+      if (thumb) thumb.classList.toggle('selected', selected);
+      updateBatchUI();
+    }
+
+    function updateBatchUI() {
+      const batch = document.getElementById('batchActions');
+      const count = selectedIds.size;
+      document.getElementById('selectedCount').textContent = count;
+      batch.classList.toggle('visible', count > 0);
+    }
+
+    function selectAll() {
+      document.querySelectorAll('.page-thumb').forEach(t => {
+        const id = parseInt(t.dataset.id);
+        selectedIds.add(id);
+        t.classList.add('selected');
+        const check = t.querySelector('.thumb-check');
+        if (check) check.checked = true;
+      });
+      updateBatchUI();
+    }
+
+    function clearSelection() {
+      selectedIds.clear();
+      document.querySelectorAll('.page-thumb').forEach(t => {
+        t.classList.remove('selected');
+        const check = t.querySelector('.thumb-check');
+        if (check) check.checked = false;
+      });
+      updateBatchUI();
+    }
+
+    function deletePage(id) {
+      selectedIds.delete(id);
+      const thumb = document.querySelector(`.page-thumb[data-id="${id}"]`);
+      if (thumb) thumb.remove();
+      updateNums();
+      updateFileCount();
+      updateBatchUI();
+    }
+
+    function deleteSelected() {
+      if (!selectedIds.size) return;
+      if (!confirm(`Remover ${selectedIds.size} página(s)?`)) return;
+      
+      const ids = [...selectedIds].sort((a, b) => b - a);
+      ids.forEach(id => {
+        const thumb = document.querySelector(`.page-thumb[data-id="${id}"]`);
+        if (thumb) thumb.remove();
+      });
+      selectedIds.clear();
+      updateNums();
+      updateFileCount();
+      updateBatchUI();
+    }
+
+    function rotatePage(id) {
+      const obj = pageObjects[id];
+      if (!obj) return;
+      obj.rotation = (obj.rotation + 90) % 360;
+      
+      // Atualiza visual da miniatura
+      const thumb = document.querySelector(`.page-thumb[data-id="${id}"]`);
+      if (!thumb) return;
+      const canvas = thumb.querySelector('canvas');
+      if (canvas) {
+        canvas.style.transform = `rotate(${obj.rotation}deg)`;
+      }
+    }
+
+    function rotateSelected() {
+      selectedIds.forEach(id => rotatePage(id));
+    }
+
+    async function extractSelected() {
+      if (!selectedIds.size) return;
+      const { PDFDocument } = PDFLib;
+      const newPdf = await PDFDocument.create();
+      
+      // Respeita a ordem atual das miniaturas
+      const thumbs = [...document.querySelectorAll('.page-thumb')];
+      for (const t of thumbs) {
+        const id = parseInt(t.dataset.id);
+        if (!selectedIds.has(id)) continue;
+        const obj = pageObjects[id];
+        const [p] = await newPdf.copyPages(obj.pdfDoc, [obj.pageIndex]);
+        if (obj.rotation) p.setRotation(PDFLib.degrees(obj.rotation));
+        newPdf.addPage(p);
+      }
+      
+      download(new Blob([await newPdf.save()], { type: 'application/pdf' }), 'Paginas_Extraidas.pdf');
+    }
+
+    function updateFileCount() {
+      const visible = document.querySelectorAll('.page-thumb').length;
+      document.getElementById('fileCount').textContent = 
+        `${currentFiles.length} arquivo(s) • ${visible} página(s) visível(is)`;
+    }
+
+    function updateNums() {
+      document.querySelectorAll('.page-num').forEach((n, i) => n.textContent = i + 1);
+    }
+
+    // --- Drag & Drop reordenação ---
+    function initSortable() {
+      if (sortableInitialized) return;
+      sortableInitialized = true;
+      const container = document.getElementById('thumbnailView');
+      let dragItem = null;
+
+      container.addEventListener('dragstart', e => {
+        dragItem = e.target.closest('.page-thumb');
+        if (dragItem) dragItem.classList.add('dragging');
+      });
+      container.addEventListener('dragend', () => {
+        if (dragItem) {
+          dragItem.classList.remove('dragging');
+          updateNums();
+          document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+        }
+        dragItem = null;
+      });
+      container.addEventListener('dragover', e => {
+        e.preventDefault();
+        if (!dragItem) return;
+        const after = getAfter(container, e.clientY, e.clientX);
+        if (!after) container.appendChild(dragItem);
+        else container.insertBefore(dragItem, after);
+      });
+    }
+
+    function getAfter(c, y, x) {
+      const elms = [...c.querySelectorAll('.page-thumb:not(.dragging)')];
+      return elms.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offsetY = y - box.top - box.height / 2;
+        if (offsetY < 0 && offsetY > closest.offsetY) return { offsetY, element: child };
+        return closest;
+      }, { offsetY: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    // --- Ordenação ---
+    function naturalCompare(a, b) {
+      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    }
+
+    function sortPages(type) {
+      const container = document.getElementById('thumbnailView');
+      const thumbs = [...container.querySelectorAll('.page-thumb')];
+      document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+
+      thumbs.sort((a, b) => {
+        const objA = pageObjects[a.dataset.id];
+        const objB = pageObjects[b.dataset.id];
+        switch (type) {
+          case 'name-asc': return objA.name.localeCompare(objB.name) || (objA.pageIndex - objB.pageIndex);
+          case 'name-desc': return objB.name.localeCompare(objA.name) || (objA.pageIndex - objB.pageIndex);
+          case 'natural': return naturalCompare(objA.name, objB.name) || (objA.pageIndex - objB.pageIndex);
+          case 'original': return objA.originalIndex - objB.originalIndex;
+          default: return 0;
+        }
+      });
+      thumbs.forEach(t => container.appendChild(t));
+      updateNums();
+    }
+
+    // --- Gerar PDF ---
+    async function executeMerge() {
+      const { PDFDocument } = PDFLib;
+      const merged = await PDFDocument.create();
+      const thumbs = document.querySelectorAll('.page-thumb');
+      if (!thumbs.length) { alert("Nenhuma página para unir."); return; }
+
+      for (const t of thumbs) {
+        const obj = pageObjects[t.dataset.id];
+        const [p] = await merged.copyPages(obj.pdfDoc, [obj.pageIndex]);
+        if (obj.rotation) p.setRotation(PDFLib.degrees(obj.rotation));
+        merged.addPage(p);
+      }
+      const baseName = pageObjects[0]?.name || 'documento';
+      download(new Blob([await merged.save()], { type: 'application/pdf' }), `${baseName}_Unido.pdf`);
+    }
+
+    async function executeSplit() {
+      const file = currentFiles[0];
+      if (!file) return;
+      const mode = document.querySelector('input[name="splitMode"]:checked').value;
+      const { PDFDocument } = PDFLib;
+      const pdf = await PDFDocument.load(await file.arrayBuffer());
+      const baseName = file.name.replace(/\.pdf$/i, '');
+
+      if (mode === 'all') {
+        const zip = new JSZip();
+        for (let i = 0; i < pdf.getPageCount(); i++) {
+          const newPdf = await PDFDocument.create();
+          const [p] = await newPdf.copyPages(pdf, [i]);
+          newPdf.addPage(p);
+          zip.file(`${baseName}_Pagina_${i + 1}.pdf`, await newPdf.save());
+        }
+        download(await zip.generateAsync({ type: "blob" }), 'PDFs_Separados.zip');
+      } else {
+        const from = parseInt(document.getElementById('pFrom').value);
+        const to = parseInt(document.getElementById('pTo').value);
+        if (from > to || from < 1 || to > pdf.getPageCount()) {
+          alert("Intervalo inválido.");
+          return;
+        }
+        const newPdf = await PDFDocument.create();
+        const pages = await newPdf.copyPages(pdf, Array.from({ length: to - from + 1 }, (_, i) => from - 1 + i));
+        pages.forEach(p => newPdf.addPage(p));
+        download(new Blob([await newPdf.save()], { type: 'application/pdf' }), `${baseName}_Paginas_${from}_a_${to}.pdf`);
+      }
+    }
+
+    function download(blob, name) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+    }
+  </script>
+</body>
+</html>
