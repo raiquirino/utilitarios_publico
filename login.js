@@ -5,12 +5,15 @@
 const USUARIOS = {
   'rai': '1234',
   'Rai': '1234',
+  'Minhabb':'1234',
+  'MINHABB':'1234',
   'mari': '1234',
   'Mari': '1234',
   'MARI': '1234',
   'mariana':'1234',
   'MARIANA':'1234',
-  'izaque': '1234'
+  'izaque': '1234',
+  'IZAQUE': '1234'
   // Adicione mais usuários assim:
   // 'nome': 'senha',
 };
