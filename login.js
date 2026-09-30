@@ -3,6 +3,8 @@
 /* Este arquivo serve para TODAS as páginas */
 
 const USUARIOS = {
+  'RAIMUNDO':'1234',
+  'RAI':'1234',
   'rai': '1234',
   'Rai': '1234',
   'Minhabb':'1234',
