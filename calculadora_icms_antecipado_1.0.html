@@ -339,16 +339,17 @@
 
 <body>
 <div class="container">
-  <!-- Lista de notas à ESQUERDA -->
+
   <div class="sidebar">
-    <h3>📋 Notas Abertas</h3>
-    <div id="noteList" class="note-list"></div>
     <div class="sidebar-actions" style="flex-wrap:wrap;">
       <button class="btn btn-success" onclick="novaNotaEmBranco()" title="Nova nota em branco" style="flex:1 1 45%;font-size:0.6rem;">+ Nova</button>
       <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()" title="Importar TXT/XML" style="flex:1 1 45%;font-size:0.6rem;">Importar</button>
       <button class="btn btn-success" onclick="exportarTXTTodas()" title="Exportar todas em TXT" style="flex:1 1 45%;font-size:0.6rem;">TXT Todas</button>
       <button class="btn btn-success" onclick="exportarExcelTodas()" title="Excel de todas as notas" style="flex:1 1 45%;font-size:0.6rem;background:#1d6f42;">Excel Todas</button>
       <button class="btn btn-warning" onclick="fecharTodasNotas()" title="Fechar todas" style="flex:1 1 100%;font-size:0.6rem;">Limpar</button>
+      <!-- Lista de notas à ESQUERDA -->
+      <h3>📋 Notas Abertas</h3>
+      <div id="noteList" class="note-list"></div>
     </div>
   </div>
 
